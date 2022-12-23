@@ -63,7 +63,9 @@ class RendererContextFeed extends RendererContext {
                 createdAt: post.createdAt,
                 modifiedAt: post.createdAt > post.modifiedAt ? post.createdAt : post.modifiedAt, // Get higher date - created_at or modified_at
                 categories: this.getPostCategories(post.id),
-                thumbnail: this.getPostThumbnail(post.id)
+                thumbnail: this.getPostThumbnail(post.id),
+                tags:post.tags,
+                mainTag: post.mainTag
             }
         });
     }
