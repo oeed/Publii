@@ -65,7 +65,8 @@ class RendererContextFeed extends RendererContext {
                 categories: this.getPostCategories(post.id),
                 thumbnail: this.getPostThumbnail(post.id),
                 tags:post.tags,
-                mainTag: post.mainTag
+                mainTag: post.mainTag,
+                featuredImage: post.featuredImage,
             }
         });
     }
