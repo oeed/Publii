@@ -92,8 +92,6 @@ class RendererContextFeed extends RendererContext {
             logoUrl = URLHelper.fixProtocols(logoUrl);
         }
 
-        logoUrl = logoUrl.replace('/amp/media/website/', '/media/website/');
-
         this.context = {
             siteName: siteName,
             siteAuthor: siteOwnerData,

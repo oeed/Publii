@@ -139,14 +139,38 @@ class Themes {
                 newTheme.replace('install-use-', '') !== oldTheme
             )
         ) {
-            fs.removeSync(path.join(this.siteInputPath, 'config', 'theme.config.json'));
+            let oldConfigPath = path.join(this.siteInputPath, 'config', 'theme.config.json');
+            let basicConfig = false;
+
+            if (UtilsHelper.fileExists(oldConfigPath)) {
+                try {
+                    let oldConfig = fs.readFileSync(oldConfigPath);
+                    oldConfig = JSON.parse(oldConfig);
+                    basicConfig = { 
+                        config: {
+                            logo: oldConfig.config.logo
+                        }
+                    };
+                    basicConfig = JSON.stringify(basicConfig, null, 4);
+                } catch (e) {
+                    console.log('(!) Cannot parse old config');
+                }
+
+                fs.removeSync(oldConfigPath);
+
+                if (basicConfig) {
+                    fs.writeFileSync(oldConfigPath, basicConfig);
+                }
+            } else {
+                fs.removeSync(oldConfigPath);
+            }
 
             let newThemeName =  newTheme.replace('install-use-', '')
                                         .replace('uninstall-', '')
                                         .replace('use-', '');
             let backupConfigPath = path.join(this.siteInputPath, 'config', 'theme.' + newThemeName + '.config.json');
 
-            if(UtilsHelper.fileExists(backupConfigPath)) {
+            if (UtilsHelper.fileExists(backupConfigPath)) {
                 fs.copySync(
                     path.join(this.siteInputPath, 'config', 'theme.' + newThemeName + '.config.json'),
                     path.join(this.siteInputPath, 'config', 'theme.config.json')
@@ -308,11 +332,13 @@ class Themes {
             config: newConfig.config,
             customConfig: newConfig.customConfig,
             postConfig: newConfig.postConfig,
+            tagConfig: newConfig.tagConfig,
+            authorConfig: newConfig.authorConfig,
             defaultTemplates: newConfig.defaultTemplates
         };
 
         // Check all options for the media fields
-        let groups = ['config', 'customConfig', 'postConfig'];
+        let groups = ['config', 'customConfig', 'postConfig', 'tagConfig', 'authorConfig'];
 
         for(let i = 0; i < groups.length; i++) {
             let options = themeDefaultConfig[groups[i]];
@@ -392,7 +418,7 @@ class Themes {
                 return;
             }
 
-            let optionGroups = ['config', 'customConfig', 'postConfig'];
+            let optionGroups = ['config', 'customConfig', 'postConfig', 'tagConfig', 'authorConfig'];
 
             for(let k = 0; k < optionGroups.length; k++) {
                 let group = optionGroups[k];
@@ -432,7 +458,6 @@ class Themes {
         let authors = new Authors(this.appInstance, {site: siteData.name});
         let authorsData = authors.load();
         let authorAvatars = [];
-        let ampFallbackImage = '';
         let ogFallbackImage = '';
 
         if(authorsData && authorsData.length) {
@@ -452,10 +477,6 @@ class Themes {
                     authorAvatars.push(avatar);
                 }
             }
-        }
-
-        if(siteData && siteData.advanced && siteData.advanced.ampImage) {
-            ampFallbackImage = siteData.advanced.ampImage;
         }
 
         if(siteData && siteData.advanced && siteData.advanced.openGraphImage) {
@@ -488,7 +509,6 @@ class Themes {
             if(
                 configString.indexOf('/' + imagePath) === -1 &&
                 authorAvatars.indexOf(imagePath) === -1 &&
-                imagePath !== ampFallbackImage &&
                 imagePath !== ogFallbackImage
             ) {
                 try {

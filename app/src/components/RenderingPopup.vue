@@ -88,7 +88,6 @@ export default {
             let renderConfig = {
                 "site": this.$store.state.currentSite.config.name,
                 "theme": this.$store.state.currentSite.config.theme,
-                "ampIsEnabled": this.$store.state.currentSite.config.advanced.ampIsEnabled,
                 "showPreview": this.showPreview
             };
 
@@ -127,7 +126,7 @@ export default {
             });
 
             console.log('STOP RECEIVEING');
-            mainProcessAPI.stopReceive('app-preview-render-error', this.renderError);
+            mainProcessAPI.stopReceiveAll('app-preview-render-error');
             mainProcessAPI.receiveOnce('app-preview-render-error', this.renderError);
         },
         renderingProgress: function(data) {

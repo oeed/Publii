@@ -2,7 +2,6 @@
 const fs = require('fs-extra');
 const path = require('path');
 const minifyHTML = require('html-minifier').minify;
-const fileExists = require('file-exists');
 const Utils = require('./../../../helpers/utils.js');
 
 /*
@@ -47,27 +46,13 @@ class TemplateHelper {
             filePath = overrideFilePath;
         }
 
-        if (fileExists(filePath)) {
+        if (Utils.fileExists(filePath)) {
             if (this.loadedTemplates[filePath]) {
                 return this.loadedTemplates[filePath];
             }
 
             this.loadedTemplates[filePath] = fs.readFileSync(filePath, 'utf8');
             return this.loadedTemplates[filePath];
-        }
-
-        // Support for the AMP default files
-        if (fileName.indexOf('amp-') === 0) {
-            filePath = path.join(__dirname, '..', '..', '..', '..', 'default-files', 'theme-files', fileName);
-
-            if (fileExists(filePath)) {
-                if (this.loadedTemplates[filePath]) {
-                    return this.loadedTemplates[filePath];
-                }
-    
-                this.loadedTemplates[filePath] = fs.readFileSync(filePath, 'utf8');
-                return this.loadedTemplates[filePath];
-            }
         }
 
         return false;
@@ -84,7 +69,7 @@ class TemplateHelper {
             filePath = overrideFilePath;
         }
 
-        if (fileExists(filePath)) {
+        if (Utils.fileExists(filePath)) {
             if (this.loadedPartialTemplates[filePath]) {
                 return this.loadedPartialTemplates[filePath];
             }

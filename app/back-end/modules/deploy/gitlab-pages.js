@@ -49,7 +49,8 @@ class GitlabPages {
 
         this.client = new Gitlab({
             host: deploymentConfig.gitlab.server,
-            token: token
+            token: token,
+            rejectUnauthorized: deploymentConfig.rejectUnauthorized
         });
 
         this.client.Projects.all({
@@ -66,7 +67,7 @@ class GitlabPages {
                 let projectID = projects[0].id;
 
                 // Detect a case when repository name is only similar to the provided repository name (not equal)
-                if (projects[0].name !== repository) {
+                if (projects[0].name !== repository && projects[0].path !== repository) {
                     this.waitForTimeout = false;
                     app.mainWindow.webContents.send('app-deploy-test-error', {
                         message: {
@@ -161,8 +162,9 @@ class GitlabPages {
         }
 
         this.client = new Gitlab({
-            url: this.deployment.siteConfig.deployment.gitlab.server,
-            token: token
+            host: this.deployment.siteConfig.deployment.gitlab.server,
+            token: token,
+            rejectUnauthorized: this.deployment.siteConfig.deployment.rejectUnauthorized
         });
 
         this.setUploadProgress(6);

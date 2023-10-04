@@ -1,4 +1,4 @@
-# Publii - Static-Site CMS
+# Publii - Static CMS for privacy-focused, SEO-optimized websites.
 
 [![GPLv3 license](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/GetPublii/Publii/blob/master/LICENSE)
  [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/GetPublii/Publii/graphs/commit-activity) [![OpenCollective](https://opencollective.com/publii/backers/badge.svg)](https://opencollective.com/publii/) ![Open Source Love svg1](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)
@@ -9,7 +9,7 @@
 [Publii](https://getpublii.com/) is a desktop-based CMS for Windows, Mac and Linux that makes creating static websites fast
 and hassle-free, even for beginners.
 
-**Current version: 0.41.1 (build 15919)**
+**Current version: 0.43.0 (build 16368)**
 
 ## Why Publii?
 Unlike static-site generators that are often unwieldy and difficult to use, Publii provides an

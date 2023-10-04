@@ -63,13 +63,46 @@ class RendererContext {
             unassigned: {}
         };
 
-        for(let i = 0; i < menuData.length; i++) {
-            menuData[i].items = this.prepareMenuItems(menuData[i].items, tagsData, postsData);
+        for (let i = 0; i < menuData.length; i++) {
+            let positions = menuData[i].position.split(';');
+            let maxLevels = menuData[i].maxLevels;
 
-            if (menuData[i].position !== '') {
-                menus.assigned[menuData[i].position] = menuData[i];
+            if (maxLevels) {
+                maxLevels = maxLevels.split(';').map(level => parseInt(level, 10));
             } else {
+                maxLevels = Array.from({length: positions.length}, () => -1);
+            }
+
+            if (positions[0] === '') {
+                menuData[i].items = this.prepareMenuItems(menuData[i].items, tagsData, postsData);
                 menus.unassigned[slug(menuData[i].name)] = menuData[i];
+            } else {
+                for (let j = 0; j < positions.length; j++) {
+                    let maxLevel = maxLevels[j];
+                    let position = positions[j];
+
+                    if (!maxLevel) {
+                        if (typeof this.themeConfig.menus[position] === 'object' && this.themeConfig.menus[position].maxLevels) {
+                            maxLevel = parseInt(this.themeConfig.menus[position].maxLevels, 10);
+                        } else {
+                            maxLevel = -1;
+                        }
+                    } else {
+                        let themeMaxLevel = -1;
+                        
+                        if (typeof this.themeConfig.menus[position] === 'object' && this.themeConfig.menus[position].maxLevels) {
+                            themeMaxLevel = parseInt(this.themeConfig.menus[position].maxLevels, 10);
+                        }
+
+                        if (themeMaxLevel > -1 && maxLevel > -1 && maxLevel > themeMaxLevel) {
+                            maxLevel = themeMaxLevel;
+                        }
+                    }
+
+                    let positionMenuData = JSON.parse(JSON.stringify(menuData[i]));
+                    positionMenuData.items = this.prepareMenuItems(positionMenuData.items, tagsData, postsData, 2, maxLevel + 1);
+                    menus.assigned[position] = positionMenuData;
+                }
             }
         }
 
@@ -84,7 +117,12 @@ class RendererContext {
         return menus;
     }
 
-    prepareMenuItems(items, tagsData, postsData, level = 2) {
+    prepareMenuItems(items, tagsData, postsData, level = 2, maxLevel = false) {
+        // When max level is exceed - return items
+        if (maxLevel && maxLevel !== -1 && maxLevel < level) {
+            return [];
+        }
+
         for (let i = 0; i < items.length; i++) {
             items[i].level = level;
 
@@ -113,7 +151,7 @@ class RendererContext {
             }
 
             if (items[i] && !items[i].isHidden && items[i].items.length > 0) {
-                items[i].items = this.prepareMenuItems(items[i].items, tagsData, postsData, level + 1);
+                items[i].items = this.prepareMenuItems(items[i].items, tagsData, postsData, level + 1, maxLevel);
             }
         }
 
@@ -236,8 +274,6 @@ class RendererContext {
             logoUrl = URLHelper.fixProtocols(logoUrl);
         }
 
-        logoUrl = logoUrl.replace('/amp/media/website/', '/media/website/');
-
         let siteNameValue = this.siteConfig.name;
 
         if(this.siteConfig.displayName) {
@@ -265,7 +301,6 @@ class RendererContext {
                 errorUrl: errorUrl,
                 tagsUrl: this.getTagsUrl(),
                 pageUrl: this.getPageUrl(context, paginationData, itemSlug),
-                ampUrl: this.getAmpPageUrl(context, paginationData, itemSlug),
                 name: siteNameValue,
                 logo: logoUrl,
                 logoSize: logoSize,
@@ -279,7 +314,6 @@ class RendererContext {
             },
             renderer: {
                 previewMode: this.renderer.previewMode,
-                ampMode: this.renderer.ampMode,
                 theme: {
                     name: this.themeConfig.name,
                     version: this.themeConfig.version,
@@ -304,81 +338,24 @@ class RendererContext {
         }
 
         this.renderer.globalContext = this.context;
+
+        if (itemContext) {
+            if (itemContext.post && itemContext.post.id) {
+                this.renderer.globalContext.itemID = itemContext.post.id;
+            } else if (itemContext.tag && itemContext.tag.id) {
+                this.renderer.globalContext.itemID = itemContext.tag.id;
+            } else if (itemContext.author && itemContext.author.id) {
+                this.renderer.globalContext.itemID = itemContext.author.id;
+            }
+        }
+
         this.context.headCustomCode = this.getCustomHTMLCode('customHeadCode', itemContext);
-        this.context.headAmpCustomCode = this.getCustomHTMLCode('customHeadAmpCode', itemContext);
         this.context.bodyCustomCode = this.getCustomHTMLCode('customBodyCode', itemContext);
         this.context.commentsCustomCode = this.getCustomHTMLCode('customCommentsCode', itemContext);
         this.context.customSearchInput = this.getCustomHTMLCode('customSearchInput', itemContext);
         this.context.customSearchContent = this.getCustomHTMLCode('customSearchContent', itemContext);
         this.context.footerCustomCode = this.getCustomHTMLCode('customFooterCode', itemContext);
-        this.context.footerAmpCustomCode = this.getCustomHTMLCode('customFooterAmpCode', itemContext);
         this.context.customHTML = this.getCustomHTMLCodeObject(this.siteConfig.advanced.customHTML, itemContext);
-
-        // In AMP mode create special global @amp variable
-        if(this.renderer.ampMode) {
-            let ampImage = '';
-            let ampCustomCssPath = path.join(this.inputDir, 'config', 'custom-css-amp.css');
-            let ampCustomCss = '';
-            
-            if (UtilsHelper.fileExists(ampCustomCssPath)) {
-                ampCustomCss = fs.readFileSync(ampCustomCssPath);
-            }
-
-            if(
-                this.siteConfig.advanced.ampImage !== '' &&
-                this.siteConfig.advanced.ampImage.indexOf('http://') === -1 &&
-                this.siteConfig.advanced.ampImage.indexOf('https://') === -1 &&
-                this.siteConfig.advanced.ampImage.indexOf('media/website/') === -1
-            ) {
-                ampImage = path.join(this.siteConfig.domain, 'media', 'website', this.siteConfig.advanced.ampImage);
-                ampImage = normalizePath(ampImage);
-                ampImage = URLHelper.fixProtocols(ampImage);
-            } else {
-                ampImage = URLHelper.fixProtocols(this.siteConfig.advanced.ampImage);
-            }
-
-            ampImage = ampImage.replace('/amp/media/website/', '/media/website/');
-
-            if(this.siteConfig.advanced.ampPrimaryColor) {
-                this.context.amp = {
-                    primaryColor: this.siteConfig.advanced.ampPrimaryColor,
-                    image: ampImage,
-                    shareButtons: this.siteConfig.advanced.ampShare,
-                    shareSystem: this.siteConfig.advanced.ampShareSystem,
-                    shareFacebook: this.siteConfig.advanced.ampShareFacebook,
-                    shareFacebookId: this.siteConfig.advanced.ampShareFacebookId,
-                    shareTwitter: this.siteConfig.advanced.ampShareTwitter,
-                    sharePinterest: this.siteConfig.advanced.ampSharePinterest,
-                    shareLinkedIn: this.siteConfig.advanced.ampShareLinkedIn,
-                    shareTumblr: this.siteConfig.advanced.ampShareTumblr,
-                    shareWhatsapp: this.siteConfig.advanced.ampShareWhatsapp,
-                    footerText: this.siteConfig.advanced.ampFooterText || 'Powered by Publii',
-                    GAID: this.siteConfig.advanced.ampGaId || '',
-                    originalWebsiteUrl: this.siteConfig.domain.replace(/amp$/, ''),
-                    customCss: ampCustomCss
-                }
-            } else {
-                // Default configuration for AMP
-                this.context.amp = {
-                    primaryColor: '#039be5',
-                    image: '',
-                    shareButtons: 1,
-                    shareSystem: 1,
-                    shareFacebook: 1,
-                    shareFacebookId: '',
-                    shareTwitter: 1,
-                    shareGooglePlus: 1,
-                    sharePinterest: 1,
-                    shareLinkedIn: 1,
-                    shareTumblr: 1,
-                    shareWhatsapp: 1,
-                    footerText: 'Powered by Publii',
-                    GAID: '',
-                    originalWebsiteUrl: this.siteConfig.domain.replace(/amp$/, ''),
-                    customCss: ampCustomCss
-                }
-            }
-        }
 
         if (this.renderer.plugins.hasModifiers('globalContext')) {
             this.context = this.renderer.plugins.runModifiers('globalContext', this.renderer, this.context); 
@@ -412,6 +389,10 @@ class RendererContext {
             if (this.renderer.plugins.hasInsertions('customHTML.' + key)) {
                 code += "\n";
                 code += this.renderer.plugins.runInsertions('customHTML.' + key, this.renderer, context);
+            }
+
+            if (this.renderer.plugins.hasModifiers('customHTML.' + key)) {
+                code = this.renderer.plugins.runModifiers('customHTML.' + key, this.renderer, code, context);
             }
 
             object[key] = code.trim();
@@ -644,16 +625,6 @@ class RendererContext {
                 return this.siteConfig.domain + '/' + itemSlug + '/';
             }
         }
-    }
-
-    getAmpPageUrl (context, paginationData, itemSlug) {
-        if (!this.siteConfig.advanced.ampIsEnabled || context === '404' || context === 'search') {
-            return '';
-        }
-
-        let siteUrl = this.siteConfig.domain + '/';
-        let ampUrl = this.siteConfig.domain + '/amp/';
-        return this.getPageUrl(context, paginationData, itemSlug).replace(siteUrl, ampUrl);
     }
 
     getPaginationContextData (paginationData) {

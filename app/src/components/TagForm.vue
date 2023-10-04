@@ -19,7 +19,7 @@
              <div
                 v-if="!currentThemeHasSupportForTagPages"
                 slot="note"
-                class="msg msg-small msg-icon msg-alert note">
+                class="msg msg-small msg-icon msg-alert">
                 <icon name="warning" size="m" />
                 <p>{{ $t('settings.themeDoesNotSupportTagPages') }}</p>
             </div>
@@ -56,7 +56,9 @@
                             <span>{{ $t('ui.description') }}:</span>
                             <text-area
                                 v-model="tagData.description"
-                                :spellcheck="$store.state.currentSite.config.spellchecking"
+                                :wysiwyg="true"
+                                :miniEditorMode="true"
+                                :simplifiedToolbar="true"
                                 :rows="4"></text-area>
                         </label>
 
@@ -166,11 +168,19 @@
                         ref="seo-content">
                         <label :class="{ 'is-invalid': errors.indexOf('slug') > -1 }">
                             <span>{{ $t('ui.slug') }}:</span>
-                            <input
-                                v-model="tagData.slug"
-                                @keyup="cleanError('slug')"
-                                spellcheck="false"
-                                type="text">
+                            <div class="options-sidebar-item-slug">
+                                <input
+                                    v-model="tagData.slug"
+                                    @keyup="cleanError('slug')"
+                                    spellcheck="false"
+                                    type="text">
+                                <p-button 
+                                    :onClick="updateSlug" 
+                                    :title="$t('ui.updateSlug')"
+                                    icon="refresh"
+                                    type="secondary icon">
+                                </p-button>
+                            </div>
                         </label>
 
                         <label class="with-char-counter">
@@ -179,10 +189,8 @@
                                 v-model="tagData.additionalData.metaTitle"
                                 type="text"
                                 :spellcheck="$store.state.currentSite.config.spellchecking"
-                                :placeholder="metaFieldAttrs"
-                                :disabled="!metaOptionsActive"
-                                :readonly="!metaOptionsActive"
-                                :charCounter="metaOptionsActive"
+                                :placeholder="$t('ui.leaveBlankToUseDefaultPageTitle')"
+                                :charCounter="true"
                                 :preferredCount="70" />
                         </label>
 
@@ -190,10 +198,8 @@
                             <span>{{ $t('ui.metaDescription') }}:</span>
                             <text-area
                                 v-model="tagData.additionalData.metaDescription"
-                                :placeholder="metaFieldAttrs"
-                                :disabled="!metaOptionsActive"
-                                :readonly="!metaOptionsActive"
-                                :charCounter="metaOptionsActive"
+                                :placeholder="$t('ui.leaveBlankToUseDefaultPageTitle')"
+                                :charCounter="true"
                                 :spellcheck="$store.state.currentSite.config.spellchecking"
                                 :preferredCount="160"></text-area>
                         </label>
@@ -259,6 +265,60 @@
                                 :disabled="true"
                                 :readonly="true" />
                         </label>
+
+                        <template v-if="dataSet">
+                            <template v-for="(field, index) of tagViewThemeSettings">
+                                <separator
+                                    v-if="displayField(field) && field.type === 'separator'"
+                                    :label="field.label"
+                                    :is-line="true"
+                                    :key="'tag-view-field-' + index"
+                                    :note="field.note" />
+
+                                <label
+                                    v-if="displayField(field) && field.type !== 'separator'"
+                                    :key="'tag-view-field-' + index">
+                                    {{ field.label }}
+
+                                    <dropdown
+                                        v-if="!field.type || field.type === 'select'"
+                                        :id="field.name + '-select'"
+                                        class="tag-view-settings"
+                                        v-model="tagData.additionalData.viewConfig[field.name]"
+                                        :items="generateItems(field.options)">
+                                        <option slot="first-choice" value="">{{ $t('settings.useGlobalConfiguration') }}</option>
+                                    </dropdown>
+
+                                    <text-input
+                                        v-if="field.type === 'text' || field.type === 'number'"
+                                        :type="field.type"
+                                        class="tag-view-settings"
+                                        :spellcheck="$store.state.currentSite.config.spellchecking"
+                                        :placeholder="fieldPlaceholder(field)"
+                                        v-model="tagData.additionalData.viewConfig[field.name]" />
+
+                                    <text-area
+                                        v-if="field.type === 'textarea'"
+                                        class="tag-view-settings"
+                                        :placeholder="fieldPlaceholder(field)"
+                                        :spellcheck="$store.state.currentSite.config.spellchecking"
+                                        v-model="tagData.additionalData.viewConfig[field.name]" />
+
+                                    <color-picker
+                                        v-if="field.type === 'colorpicker'"
+                                        class="tag-view-settings"
+                                        v-model="tagData.additionalData.viewConfig[field.name]"
+                                        :outputFormat="field.outputFormat ? field.outputFormat : 'RGBAorHEX'">
+                                    </color-picker>
+
+                                    <small
+                                        v-if="field.note"
+                                        class="note">
+                                        {{ field.note }}
+                                    </small>
+                                </label>
+                            </template>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -309,6 +369,7 @@ export default {
             hasFeaturedImage: false,
             openedItem: 'basic',
             currentTagIsHidden: false,
+            dataSet: false,
             tagData: {
                 id: 0,
                 name: '',
@@ -340,25 +401,6 @@ export default {
 
             return this.$store.state.currentSite.themeSettings.renderer.createTagPages;
         },
-        metaFieldAttrs: function() {
-            let text = this.$t('ui.leaveBlankToUseDefaultPageTitle');
-
-            if(!this.metaOptionsActive) {
-                text = this.$t('tag.toUseThisOptionEnableIndexingTagPages');
-            }
-
-            return text;
-        },
-        metaOptionsActive: function() {
-            if(
-                this.$store.state.currentSite.config.advanced &&
-                this.$store.state.currentSite.config.advanced.metaRobotsTags.indexOf('noindex') !== -1
-            ) {
-                return false;
-            }
-
-            return true
-        },
         tagTemplates: function() {
             return this.$store.getters.tagTemplates;
         },
@@ -375,6 +417,9 @@ export default {
                 'noindex, follow': this.$t('ui.noindexFollow'),
                 'noindex, nofollow': this.$t('ui.noindexNofollow')
             };
+        },
+        tagViewThemeSettings () {
+            return this.$store.state.currentSite.themeSettings.tagConfig;
         }
     },
     mounted () {
@@ -397,6 +442,13 @@ export default {
             this.tagData.slug = params.slug || '';
             this.tagData.description = params.description || '';
             this.tagData.additionalData = {};
+
+            if (typeof params.additionalData.viewConfig === 'object') {
+                this.tagData.additionalData.viewConfig = params.additionalData.viewConfig;
+            } else {
+                this.tagData.additionalData.viewConfig = {};
+            }
+
             this.tagData.additionalData.featuredImage = params.additionalData.featuredImage || '';
             this.tagData.additionalData.featuredImageAlt = params.additionalData.featuredImageAlt || '';
             this.tagData.additionalData.featuredImageCaption = params.additionalData.featuredImageCaption || '';
@@ -412,6 +464,10 @@ export default {
             if (this.tagData.additionalData && this.tagData.additionalData.featuredImage) {
                 this.hasFeaturedImage = true;
             }
+
+            Vue.nextTick(() => {
+                this.dataSet = true;
+            });
         });
     },
     methods: {
@@ -426,10 +482,14 @@ export default {
                 return;
             }
 
-            let tagData = Object.assign({}, this.tagData);
-            tagData.site = this.$store.state.currentSite.config.name;
+            this.$bus.$emit('view-settings-before-save');
 
-            this.saveData(tagData, showPreview);
+            setTimeout(() => {
+                let tagData = Object.assign({}, this.tagData);
+                tagData.site = this.$store.state.currentSite.config.name;
+
+                this.saveData(tagData, showPreview);
+            }, 500);
         },
         async saveAndPreview () {
             await this.save(true);
@@ -499,6 +559,8 @@ export default {
         },
         close() {
             this.$bus.$emit('hide-tag-item-editor');
+            this.dataSet = false;
+            
             mainProcessAPI.send('app-tag-cancel', {
                 site: this.$store.state.currentSite.config.name,
                 id: this.tagData.id,
@@ -575,6 +637,42 @@ export default {
         },
         toggleHiddenStatus () {
             this.currentTagIsHidden = this.tagData.additionalData.isHidden;
+        },
+        displayField (field) {
+            if (!this.dataSet) {
+                return false;
+            }
+
+            if (!field.tagTemplates) {
+                return true;
+            }
+
+            if (field.tagTemplates.indexOf('!') === 0) {
+                return !(field.tagTemplates.replace('!', '').split(',').indexOf(this.tagData.additionalData.template) > -1);
+            }
+
+            return field.tagTemplates.split(',').indexOf(this.tagData.additionalData.template) > -1;
+        },
+        generateItems (arrayToConvert) {
+            let options = {};
+
+            for (let i = 0; i < arrayToConvert.length; i++) {
+                options[arrayToConvert[i].value] = arrayToConvert[i].label;
+            }
+
+            return options;
+        },
+        fieldPlaceholder (field) {
+            if (field.placeholder || field.placeholder === '') {
+                return field.placeholder;
+            }
+
+			return this.$t('theme.leaveBlankToUseDefault');
+        },
+        async updateSlug () {
+            if (this.tagData.name.trim() !== '') {
+                this.tagData.slug = await mainProcessAPI.invoke('app-main-process-create-slug', this.tagData.name);
+            }
         }
     },
     beforeDestroy () {
@@ -619,7 +717,6 @@ export default {
 }
 
 .note {
-    margin-top: 2rem;
     position: relative;
     z-index: 1;
 }

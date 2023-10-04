@@ -19,7 +19,7 @@
             <div
                 v-if="!currentThemeHasSupportForAuthorPages"
                 slot="note"
-                class="msg msg-small msg-icon msg-alert note">
+                class="msg msg-small msg-icon msg-alert">
                 <icon name="warning" size="m" />
                 <p>{{ $t('settings.themeDoesNotSupportAuthorPages') }}</p>
             </div>
@@ -56,6 +56,9 @@
                             <span>{{ $t('ui.description') }}:</span>
                             <text-area
                                 v-model="authorData.description"
+                                :wysiwyg="true"
+                                :miniEditorMode="true"
+                                :simplifiedToolbar="true"
                                 :rows="4"></text-area>
                         </label>
 
@@ -195,11 +198,19 @@
                         ref="seo-content">
                         <label :class="{ 'is-invalid': errors.indexOf('slug') > -1 }">
                             <span>{{ $t('ui.slug') }}:</span>
-                            <input
-                                v-model="authorData.username"
-                                @keyup="cleanError('slug')"
-                                spellcheck="false"
-                                type="text">
+                            <div class="options-sidebar-item-slug">
+                                <input
+                                    v-model="authorData.username"
+                                    @keyup="cleanError('slug')"
+                                    spellcheck="false"
+                                    type="text">
+                                <p-button 
+                                    :onClick="updateSlug" 
+                                    :title="$t('ui.updateSlug')"
+                                    icon="refresh"
+                                    type="secondary icon">
+                                </p-button>
+                            </div>
                         </label>
 
                         <label class="with-char-counter">
@@ -208,10 +219,8 @@
                                 v-model="authorData.metaTitle"
                                 type="text"
                                 :spellcheck="$store.state.currentSite.config.spellchecking"
-                                :placeholder="metaFieldAttrs"
-                                :disabled="!metaOptionsActive"
-                                :readonly="!metaOptionsActive"
-                                :charCounter="metaOptionsActive"
+                                :placeholder="$t('ui.leaveBlankToUseDefaultPageTitle')"
+                                :charCounter="true"
                                 :preferredCount="70" />
                         </label>
 
@@ -219,10 +228,8 @@
                             <span>{{ $t('ui.metaDescription') }}:</span>
                             <text-area
                                 v-model="authorData.metaDescription"
-                                :placeholder="metaFieldAttrs"
-                                :disabled="!metaOptionsActive"
-                                :readonly="!metaOptionsActive"
-                                :charCounter="metaOptionsActive"
+                                :placeholder="$t('ui.leaveBlankToUseDefaultPageTitle')"
+                                :charCounter="true"
                                 :spellcheck="$store.state.currentSite.config.spellchecking"
                                 :preferredCount="160"></text-area>
                         </label>
@@ -288,6 +295,60 @@
                                 :disabled="true"
                                 :readonly="true" />
                         </label>
+
+                        <template v-if="dataSet">
+                            <template v-for="(field, index) of authorViewThemeSettings">
+                                <separator 
+                                    v-if="displayField(field) && field.type === 'separator'"
+                                    :label="field.label"
+                                    :is-line="true"
+                                    :key="'author-view-field-' + index"
+                                    :note="field.note" />
+
+                                <label
+                                    v-if="displayField(field) && field.type !== 'separator'"
+                                    :key="'author-view-field-' + index">
+                                    {{ field.label }}
+
+                                    <dropdown
+                                        v-if="!field.type || field.type === 'select'"
+                                        :id="field.name + '-select'"
+                                        class="author-view-settings"
+                                        v-model="authorData.additionalData.viewConfig[field.name]"
+                                        :items="generateItems(field.options)">
+                                        <option slot="first-choice" value="">{{ $t('settings.useGlobalConfiguration') }}</option>
+                                    </dropdown>
+
+                                    <text-input
+                                        v-if="field.type === 'text' || field.type === 'number'"
+                                        :type="field.type"
+                                        class="author-view-settings"
+                                        :spellcheck="$store.state.currentSite.config.spellchecking"
+                                        :placeholder="fieldPlaceholder(field)"
+                                        v-model="authorData.additionalData.viewConfig[field.name]" />
+
+                                    <text-area
+                                        v-if="field.type === 'textarea'"
+                                        class="author-view-settings"
+                                        :placeholder="fieldPlaceholder(field)"
+                                        :spellcheck="$store.state.currentSite.config.spellchecking"
+                                        v-model="authorData.additionalData.viewConfig[field.name]" />
+
+                                    <color-picker
+                                        v-if="field.type === 'colorpicker'"
+                                        class="author-view-settings"
+                                        v-model="authorData.additionalData.viewConfig[field.name]"
+                                        :outputFormat="field.outputFormat ? field.outputFormat : 'RGBAorHEX'">
+                                    </color-picker>
+
+                                    <small
+                                        v-if="field.note"
+                                        class="note">
+                                        {{ field.note }}
+                                    </small>
+                                </label>
+                            </template>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -319,13 +380,13 @@
                     {{ $t('ui.cancel') }}
                 </p-button>
             </div>
-
         </div>
     </div>
 </template>
 
 <script>
 import Utils from './../helpers/utils';
+import Vue from 'vue';
 
 export default {
     name: 'author-form-sidebar',
@@ -337,6 +398,7 @@ export default {
             errors: [],
             hasFeaturedImage: false,
             openedItem: 'basic',
+            dataSet: false,
             authorData: {
                 id: 0,
                 name: '',
@@ -371,25 +433,6 @@ export default {
 
             return this.$store.state.currentSite.themeSettings.renderer.createAuthorPages;
         },
-        metaFieldAttrs: function() {
-            let text = this.$t('ui.leaveBlankToUseDefaultPageTitle');
-
-            if(!this.metaOptionsActive) {
-                text = this.$t('author.toUseThisOptionEnableIndexingAuthorPages');
-            }
-
-            return text;
-        },
-        metaOptionsActive: function() {
-            if(
-                this.$store.state.currentSite.config.advanced &&
-                this.$store.state.currentSite.config.advanced.metaRobotsAuthors.indexOf('noindex') !== -1
-            ) {
-                return false;
-            }
-
-            return true
-        },
         authorTemplates: function() {
             return this.$store.getters.authorTemplates;
         },
@@ -406,6 +449,9 @@ export default {
                 'noindex, follow': this.$t('ui.noindexFollow'),
                 'noindex, nofollow': this.$t('ui.noindexNofollow')
             };
+        },
+        authorViewThemeSettings () {
+            return this.$store.state.currentSite.themeSettings.authorConfig;
         }
     },
     mounted () {
@@ -435,6 +481,13 @@ export default {
             this.authorData.template = params.template || '';
             this.authorData.visibleIndexingOptions = params.visibleIndexingOptions || false;
             this.authorData.additionalData = {};
+
+            if (typeof params.additionalData.viewConfig === 'object') {
+                this.authorData.additionalData.viewConfig = params.additionalData.viewConfig;
+            } else {
+                this.authorData.additionalData.viewConfig = {};
+            }
+
             this.authorData.additionalData.featuredImage = params.additionalData.featuredImage || '';
             this.authorData.additionalData.featuredImageAlt = params.additionalData.featuredImageAlt || '';
             this.authorData.additionalData.featuredImageCaption = params.additionalData.featuredImageCaption || '';
@@ -445,6 +498,10 @@ export default {
             if (this.authorData.additionalData && this.authorData.additionalData.featuredImage) {
                 this.hasFeaturedImage = true;
             }
+
+            Vue.nextTick(() => {
+                this.dataSet = true;
+            });
         });
     },
     methods: {
@@ -455,25 +512,29 @@ export default {
                 this.authorData.username = await mainProcessAPI.invoke('app-main-process-create-slug', this.authorData.username);
             }
 
-            let authorData = {
-                id: this.authorData.id,
-                site: this.$store.state.currentSite.config.name,
-                name: this.authorData.name,
-                username: this.authorData.username,
-                config: JSON.stringify({
-                    email: this.authorData.email,
-                    website: this.authorData.website,
-                    avatar: this.authorData.avatar,
-                    useGravatar: this.authorData.useGravatar,
-                    description: this.authorData.description,
-                    metaTitle: this.authorData.metaTitle,
-                    metaDescription: this.authorData.metaDescription,
-                    template: this.authorData.template
-                }),
-                additionalData: JSON.stringify(this.authorData.additionalData)
-            };
+            this.$bus.$emit('view-settings-before-save');
 
-            this.saveData(authorData, showPreview);
+            setTimeout(() => {
+                let authorData = {
+                    id: this.authorData.id,
+                    site: this.$store.state.currentSite.config.name,
+                    name: this.authorData.name,
+                    username: this.authorData.username,
+                    config: JSON.stringify({
+                        email: this.authorData.email,
+                        website: this.authorData.website,
+                        avatar: this.authorData.avatar,
+                        useGravatar: this.authorData.useGravatar,
+                        description: this.authorData.description,
+                        metaTitle: this.authorData.metaTitle,
+                        metaDescription: this.authorData.metaDescription,
+                        template: this.authorData.template
+                    }),
+                    additionalData: JSON.stringify(this.authorData.additionalData)
+                };
+
+                this.saveData(authorData, showPreview);
+            }, 500);
         },
         async saveAndPreview () {
             await this.save(true);
@@ -515,6 +576,8 @@ export default {
         },
         close() {
             this.$bus.$emit('hide-author-item-editor');
+            this.dataSet = false;
+
             mainProcessAPI.send('app-author-cancel', {
                 site: this.$store.state.currentSite.config.name,
                 id: this.authorData.id,
@@ -599,12 +662,12 @@ export default {
 
             this.getGravatar();
         },
-        getGravatar: Utils.debouncedFunction(function() {
-            let avatarPath = 'https://www.gravatar.com/avatar/' + this.md5(this.authorData.email) + '?s=240';
+        getGravatar: Utils.debouncedFunction(async function() {
+            let avatarPath = 'https://www.gravatar.com/avatar/' + await this.md5(this.authorData.email) + '?s=240';
             this.authorData.avatar = avatarPath;
         }, 1000),
-        md5 (value) {
-            return mainProcessAPI.createMD5(value);
+        async md5 (value) {
+            return await mainProcessAPI.createMD5(value);
         },
         avatarRemoved () {
             this.authorData.useGravatar = false;
@@ -643,6 +706,42 @@ export default {
             setTimeout(function () {
                 contentWrapper.style.maxHeight = 0;
             }, 50);
+        },
+        displayField (field) {
+            if (!this.dataSet) {
+                return false;
+            }
+
+            if (!field.authorTemplates) {
+                return true;
+            }
+
+            if (field.authorTemplates.indexOf('!') === 0) {
+                return !(field.authorTemplates.replace('!', '').split(',').indexOf(this.authorData.template) > -1);
+            }
+
+            return field.authorTemplates.split(',').indexOf(this.authorData.template) > -1;
+        },
+        generateItems (arrayToConvert) {
+            let options = {};
+
+            for (let i = 0; i < arrayToConvert.length; i++) {
+                options[arrayToConvert[i].value] = arrayToConvert[i].label;
+            }
+
+            return options;
+        },
+        fieldPlaceholder (field) {
+            if (field.placeholder || field.placeholder === '') {
+                return field.placeholder;
+            }
+
+			return this.$t('theme.leaveBlankToUseDefault');
+        },
+        async updateSlug () {
+            if (this.authorData.name.trim() !== '') {
+                this.authorData.username = await mainProcessAPI.invoke('app-main-process-create-slug', this.authorData.name);
+            }
         }
     },
     beforeDestroy () {
@@ -683,7 +782,6 @@ export default {
 }
 
 .note {
-    margin-top: 2rem;
     position: relative;
     z-index: 1;
 }

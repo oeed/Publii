@@ -11,7 +11,7 @@ const slug = require('./../../helpers/slug');
 const sqlite = require('better-sqlite3');
 const URLHelper = require('./helpers/url.js');
 const FilesHelper = require('./helpers/files.js');
-const PostViewSettingsHelper = require('./helpers/post-view-settings.js');
+const ViewSettingsHelper = require('./helpers/view-settings.js');
 const Themes = require('../../themes.js');
 const TemplateHelper = require('./helpers/template.js');
 const RendererContext = require('./renderer-context.js');
@@ -50,7 +50,6 @@ class Renderer {
         this.menuContext = '';
         this.errorLog = [];
         this.previewMode = false;
-        this.ampMode = false;
         this.useRelativeUrls = siteConfig.deployment.relativeUrls;
         let sitePath = path.join(this.sitesDir, this.siteName);
         this.plugins = new RendererPlugins(sitePath);
@@ -148,13 +147,13 @@ class Renderer {
     async renderSite() {
         try {
             if (this.singlePageMode) {
-                this.renderPostPreview();
+                await this.renderPostPreview();
             } else if (this.homepageOnlyMode) {
-                this.renderHomepagePreview();
+                await this.renderHomepagePreview();
             } else if (this.tagOnlyMode) {
-                this.renderTagPreview();
+                await this.renderTagPreview();
             } else if (this.authorOnlyMode) {
-                this.renderAuthorPreview();
+                await this.renderAuthorPreview();
             } else {
                 await this.renderFullPreview();
             }
@@ -176,7 +175,6 @@ class Renderer {
         this.preparePageToRender();
         this.triggerEvent('beforeRender');
         await this.generateWWW();
-        this.generateAMP();
         console.timeEnd("RENDERING");
 
         if (this.siteConfig.deployment.relativeUrls) {
@@ -291,10 +289,10 @@ class Renderer {
     /**
      * Renders post preview
      */
-    renderPostPreview() {
+    async renderPostPreview () {
         this.preparePreview('post');
 
-        FilesHelper.copyAssetsFiles(this.themeDir, this.outputDir, this.themeConfig);
+        await FilesHelper.copyAssetsFiles(this.themeDir, this.outputDir, this.themeConfig);
         FilesHelper.copyDynamicAssetsFiles(this.themeDir, this.outputDir, this.themeConfig);
         FilesHelper.copyMediaFiles(this.inputDir, this.outputDir, [this.itemID]);
         FilesHelper.copyPluginFiles(this.inputDir, this.outputDir, this.pluginsDir);
@@ -305,11 +303,11 @@ class Renderer {
     /**
      * Renders homepage preview
      */
-    renderHomepagePreview() {
+    async renderHomepagePreview () {
         this.preparePreview('frontpage');
 
         let postIDs = Object.keys(this.cachedItems.posts);
-        FilesHelper.copyAssetsFiles(this.themeDir, this.outputDir, this.themeConfig);
+        await FilesHelper.copyAssetsFiles(this.themeDir, this.outputDir, this.themeConfig);
         FilesHelper.copyDynamicAssetsFiles(this.themeDir, this.outputDir, this.themeConfig);
         FilesHelper.copyMediaFiles(this.inputDir, this.outputDir, postIDs);
         FilesHelper.copyPluginFiles(this.inputDir, this.outputDir, this.pluginsDir);
@@ -320,7 +318,7 @@ class Renderer {
     /**
      * Renders tag page preview
      */
-    renderTagPreview() {
+    async renderTagPreview () {
         this.preparePreview('tag');
 
         let postIDs = Object.keys(this.cachedItems.posts);
@@ -335,7 +333,7 @@ class Renderer {
             }
         }
 
-        FilesHelper.copyAssetsFiles(this.themeDir, this.outputDir, this.themeConfig);
+        await FilesHelper.copyAssetsFiles(this.themeDir, this.outputDir, this.themeConfig);
         FilesHelper.copyDynamicAssetsFiles(this.themeDir, this.outputDir, this.themeConfig);
         FilesHelper.copyMediaFiles(this.inputDir, this.outputDir, postIDsToRender);
         FilesHelper.copyPluginFiles(this.inputDir, this.outputDir, this.pluginsDir);
@@ -346,7 +344,7 @@ class Renderer {
     /**
      * Renders author page preview
      */
-    renderAuthorPreview() {
+    async renderAuthorPreview () {
         this.preparePreview('author');
 
         let postIDs = Object.keys(this.cachedItems.posts);
@@ -361,7 +359,7 @@ class Renderer {
             }
         }
 
-        FilesHelper.copyAssetsFiles(this.themeDir, this.outputDir, this.themeConfig);
+        await FilesHelper.copyAssetsFiles(this.themeDir, this.outputDir, this.themeConfig);
         FilesHelper.copyDynamicAssetsFiles(this.themeDir, this.outputDir, this.themeConfig);
         FilesHelper.copyMediaFiles(this.inputDir, this.outputDir, postIDsToRender);
         FilesHelper.copyPluginFiles(this.inputDir, this.outputDir, this.pluginsDir);
@@ -582,20 +580,32 @@ class Renderer {
         this.themeConfig.config = {};
         this.themeConfig.customConfig = {};
         this.themeConfig.postConfig = {};
+        this.themeConfig.tagConfig = {};
+        this.themeConfig.authorConfig = {};
 
-        for(let i = 0; i < tempThemeConfig.config.length; i++) {
+        for (let i = 0; i < tempThemeConfig.config.length; i++) {
             let key = tempThemeConfig.config[i].name;
             this.themeConfig.config[key] = tempThemeConfig.config[i].value;
         }
 
-        for(let i = 0; i < tempThemeConfig.customConfig.length; i++) {
+        for (let i = 0; i < tempThemeConfig.customConfig.length; i++) {
             let key = tempThemeConfig.customConfig[i].name;
             this.themeConfig.customConfig[key] = tempThemeConfig.customConfig[i].value;
         }
 
-        for(let i = 0; i < tempThemeConfig.postConfig.length; i++) {
+        for (let i = 0; i < tempThemeConfig.postConfig.length; i++) {
             let key = tempThemeConfig.postConfig[i].name;
             this.themeConfig.postConfig[key] = tempThemeConfig.postConfig[i].value;
+        }
+
+        for (let i = 0; i < tempThemeConfig.tagConfig.length; i++) {
+            let key = tempThemeConfig.tagConfig[i].name;
+            this.themeConfig.tagConfig[key] = tempThemeConfig.tagConfig[i].value;
+        }
+
+        for (let i = 0; i < tempThemeConfig.authorConfig.length; i++) {
+            let key = tempThemeConfig.authorConfig[i].name;
+            this.themeConfig.authorConfig[key] = tempThemeConfig.authorConfig[i].value;
         }
     }
 
@@ -614,12 +624,7 @@ class Renderer {
         let requiredPartials = ['header', 'footer'];
         let optionalPartials = [
             'pagination',
-            'menu',
-            'amp-footer',
-            'amp-head',
-            'amp-menu',
-            'amp-pagination',
-            'amp-share-buttons'
+            'menu'
         ];
         let userPartials = this.templateHelper.getUserPartials(requiredPartials, optionalPartials);
         let allPartials = requiredPartials.concat(optionalPartials).concat(userPartials);
@@ -652,10 +657,10 @@ class Renderer {
     /*
      * Generate the main view of the theme
      */
-    generateFrontpage(ampMode = false) {
-        console.time(ampMode ? 'HOME-AMP' : 'HOME');
+    generateFrontpage() {
+        console.time('HOME');
         // Load template
-        let inputFile = ampMode ? 'amp-index.hbs' : 'index.hbs';
+        let inputFile = 'index.hbs';
         let compiledTemplate = this.compileTemplate(inputFile);
 
         if (!compiledTemplate) {
@@ -673,7 +678,7 @@ class Renderer {
             postsPerPage = 5;
         }
 
-        if (totalNumberOfPosts <= postsPerPage || postsPerPage <= 0) {
+        if (totalNumberOfPosts <= postsPerPage || postsPerPage <= 0 || this.siteConfig.advanced.homepageNoPagination) {
             let context = contextGenerator.getContext(0, postsPerPage);
             let output = '';
             this.menuContext = ['frontpage'];
@@ -693,7 +698,7 @@ class Renderer {
             }
 
             if (this.plugins.hasModifiers('htmlOutput')) {
-                output = this.plugins.runModifiers('htmlOutput', this.renderer, output, this.globalContext); 
+                output = this.plugins.runModifiers('htmlOutput', this, output, [this.globalContext, context]); 
             }
 
             this.templateHelper.saveOutputFile('index.html', output);
@@ -747,7 +752,7 @@ class Renderer {
                 let output = this.renderTemplate(compiledTemplate, context, this.globalContext, inputFile);
 
                 if (this.plugins.hasModifiers('htmlOutput')) {
-                    output = this.plugins.runModifiers('htmlOutput', this.renderer, output, this.globalContext); 
+                    output = this.plugins.runModifiers('htmlOutput', this, output, [this.globalContext, context]); 
                 }
 
                 if (offset === 0) {
@@ -758,18 +763,18 @@ class Renderer {
                 }
             }
         }
-        console.timeEnd(ampMode ? 'HOME-AMP' : 'HOME');
+        console.timeEnd('HOME');
     }
 
     /*
      * Create post sites
      */
-    generatePosts(ampMode = false) {
-        console.time(ampMode ? 'POSTS-AMP' : 'POSTS');
+    generatePosts() {
+        console.time('POSTS');
         let postIDs = [];
         let postSlugs = [];
         let postTemplates = [];
-        let inputFile = ampMode ? 'amp-post.hbs' : 'post.hbs';
+        let inputFile = 'post.hbs';
 
         // Get posts
         let postData = this.db.prepare(`
@@ -810,65 +815,50 @@ class Renderer {
             return false;
         }
 
-        if (!ampMode) {
-            for (let i = 0; i < postTemplates.length; i++) {
-                let fileSlug = postTemplates[i];
+        for (let i = 0; i < postTemplates.length; i++) {
+            let fileSlug = postTemplates[i];
 
-                // When we meet default template - skip the compilation process
-                if (fileSlug === '' || !this.themeConfig.postTemplates[fileSlug]) {
-                    continue;
-                }
+            // When we meet default template - skip the compilation process
+            if (fileSlug === '' || !this.themeConfig.postTemplates[fileSlug]) {
+                continue;
+            }
 
-                compiledTemplates[fileSlug] = this.compileTemplate('post-' + fileSlug + '.hbs');
+            compiledTemplates[fileSlug] = this.compileTemplate('post-' + fileSlug + '.hbs');
 
-                if (!compiledTemplates[fileSlug]) {
-                    return false;
-                }
+            if (!compiledTemplates[fileSlug]) {
+                return false;
             }
         }
 
         // Create global context
         let progressIncrease = 40 / postIDs.length;
 
-        if (ampMode) {
-            progressIncrease = 7 / postIDs.length;
-        }
-
         // Render post sites
         for (let i = 0; i < postIDs.length; i++) {
             let contextGenerator = new RendererContextPost(this);
             let context = contextGenerator.getContext(postIDs[i]);
             let fileSlug = 'DEFAULT';
-
-            if (!ampMode) {
-                fileSlug = postTemplates[i] === '' ? 'DEFAULT' : postTemplates[i];
-            }
+            fileSlug = postTemplates[i] === '' ? 'DEFAULT' : postTemplates[i];
 
             this.menuContext = ['post', postSlugs[i]];    
-            let ampPrefix = ampMode ? 'amp-' : '';
-
+            
             if (!compiledTemplates[fileSlug]) {
                 fileSlug = 'DEFAULT';
             }
 
-            inputFile = inputFile.replace('.hbs', '') + ampPrefix + (fileSlug === 'DEFAULT' ? '' : '-' + fileSlug) + '.hbs';
+            inputFile = inputFile.replace('.hbs', '') + (fileSlug === 'DEFAULT' ? '' : '-' + fileSlug) + '.hbs';
             let postViewConfig = this.cachedItems.posts[postIDs[i]].postViewConfig;
             this.globalContext = this.createGlobalContext('post', [], false, postSlugs[i], postViewConfig, context);
             let output = this.renderTemplate(compiledTemplates[fileSlug], context, this.globalContext, inputFile);
 
             if (this.plugins.hasModifiers('htmlOutput')) {
-                output = this.plugins.runModifiers('htmlOutput', this.renderer, output, this.globalContext); 
+                output = this.plugins.runModifiers('htmlOutput', this, output, [this.globalContext, context]); 
             }
 
             this.templateHelper.saveOutputPostFile(postSlugs[i], output);
-
-            if(ampMode) {
-                this.sendProgress(Math.ceil(90 + (progressIncrease * i)), 'Generating posts (' + (i + 1) + '/' + postIDs.length + ')');
-            } else {
-                this.sendProgress(Math.ceil(20 + (progressIncrease * i)), 'Generating posts (' + (i + 1) + '/' + postIDs.length + ')');
-            }
+            this.sendProgress(Math.ceil(20 + (progressIncrease * i)), 'Generating posts (' + (i + 1) + '/' + postIDs.length + ')');
         }
-        console.timeEnd(ampMode ? 'POSTS-AMP' : 'POSTS');
+        console.timeEnd('POSTS');
     }
 
     /*
@@ -929,7 +919,7 @@ class Renderer {
         let output = this.renderTemplate(compiledTemplates[fileSlug], context, this.globalContext, inputFile);
 
         if (this.plugins.hasModifiers('htmlOutput')) {
-            output = this.plugins.runModifiers('htmlOutput', this.renderer, output, this.globalContext); 
+            output = this.plugins.runModifiers('htmlOutput', this, output, [this.globalContext, context]); 
         }
 
         this.templateHelper.saveOutputFile(postSlug + '.html', output);
@@ -963,13 +953,13 @@ class Renderer {
             }
         }
 
-        return PostViewSettingsHelper.override(postViewSettings, defaultPostViewConfig);
+        return ViewSettingsHelper.override(postViewSettings, defaultPostViewConfig);
     }
 
     /*
      * Generate tag pages
      */
-    generateTagsList(ampMode = false) {
+    generateTagsList() {
         // Check if we should render tags list
         if (
             this.siteConfig.advanced.urls.tagsPrefix === '' ||
@@ -980,8 +970,8 @@ class Renderer {
             return false;
         }
         
-        console.time(ampMode ? 'TAGS-LIST-AMP' : 'TAGS-LIST');
-        let inputFile = ampMode ? 'amp-tags.hbs' : 'tags.hbs';
+        console.time('TAGS-LIST');
+        let inputFile = 'tags.hbs';
         
         // Load template
         let compiledTemplate = this.compileTemplate(inputFile);
@@ -998,17 +988,17 @@ class Renderer {
         let output = this.renderTemplate(compiledTemplate, context, this.globalContext, inputFile);
 
         if (this.plugins.hasModifiers('htmlOutput')) {
-            output = this.plugins.runModifiers('htmlOutput', this.renderer, output, this.globalContext); 
+            output = this.plugins.runModifiers('htmlOutput', this, output, [this.globalContext, context]); 
         }
 
         this.templateHelper.saveOutputTagsListFile(output);
-        console.timeEnd(ampMode ? 'TAGS-LIST-AMP' : 'TAGS-LIST');
+        console.timeEnd('TAGS-LIST');
     }
 
     /*
      * Generate tag pages
      */
-    generateTags(tagID = false, ampMode = false) {
+    generateTags(tagID = false) {
         if (
             (
                 this.themeConfig.supportedFeatures && 
@@ -1018,9 +1008,9 @@ class Renderer {
             return false;
         }
         
-        console.time(ampMode ? 'TAGS-AMP' : 'TAGS');
+        console.time('TAGS');
         // Get tags
-        let inputFile = ampMode ? 'amp-tag.hbs' : 'tag.hbs';
+        let inputFile = 'tag.hbs';
         let queryCondition = '';
 
         if (tagID !== false) {
@@ -1080,37 +1070,28 @@ class Renderer {
             return false;
         }
 
-        if (!ampMode) {
-            for (let i = 0; i < tagTemplates.length; i++) {
-                let fileSlug = tagTemplates[i];
+        for (let i = 0; i < tagTemplates.length; i++) {
+            let fileSlug = tagTemplates[i];
 
-                // When we meet default template - skip the compilation process
-                if (fileSlug === '' || fileSlug === 'DEFAULT') {
-                    continue;
-                }
+            // When we meet default template - skip the compilation process
+            if (fileSlug === '' || fileSlug === 'DEFAULT') {
+                continue;
+            }
 
-                compiledTemplates[fileSlug] = this.compileTemplate('tag-' + fileSlug + '.hbs');
+            compiledTemplates[fileSlug] = this.compileTemplate('tag-' + fileSlug + '.hbs');
 
-                if (!compiledTemplates[fileSlug]) {
-                    return false;
-                }
+            if (!compiledTemplates[fileSlug]) {
+                return false;
             }
         }
 
         let progressIncrease = 10 / tagsData.length;
 
-        if(ampMode) {
-            progressIncrease = 2 / tagsData.length;
-        }
-
         // Render tag sites
         for (let i = 0; i < tagsData.length; i++) {
             let contextGenerator = new RendererContextTag(this);
             let fileSlug = 'DEFAULT';
-
-            if (!ampMode) {
-                fileSlug = tagTemplates[i] === '' ? 'DEFAULT' : tagTemplates[i];
-            }
+            fileSlug = tagTemplates[i] === '' ? 'DEFAULT' : tagTemplates[i];
 
             // Detect if we have enough posts to create pagination
             let totalNumberOfPosts = this.cachedItems.tags[tagIDs[i]].postsNumber;
@@ -1132,11 +1113,12 @@ class Renderer {
                 }
 
                 inputFile = inputFile.replace('.hbs', '') + (fileSlug === 'DEFAULT' ? '' : '-' + fileSlug) + '.hbs';
-                this.globalContext = this.createGlobalContext('tag', [], false, tagSlug, false, context);
+                let tagViewConfig = this.cachedItems.tags[tagIDs[i]].tagViewConfig;
+                this.globalContext = this.createGlobalContext('tag', [], false, tagSlug, tagViewConfig, context);
                 let output = this.renderTemplate(compiledTemplates[fileSlug], context, this.globalContext, inputFile);
 
                 if (this.plugins.hasModifiers('htmlOutput')) {
-                    output = this.plugins.runModifiers('htmlOutput', this.renderer, output, this.globalContext); 
+                    output = this.plugins.runModifiers('htmlOutput', this, output, [this.globalContext, context]); 
                 }
 
                 this.templateHelper.saveOutputTagFile(tagSlug, output, tagID !== false);
@@ -1192,16 +1174,17 @@ class Renderer {
                     }
 
                     inputFile = inputFile.replace('.hbs', '') + (fileSlug === 'DEFAULT' ? '' : '-' + fileSlug) + '.hbs';
+                    let tagViewConfig = this.cachedItems.tags[tagIDs[i]].tagViewConfig;
                     this.globalContext = this.createGlobalContext('tag', additionalContexts, {
                         pagination, 
                         isFirstPage: currentPage === 1,
                         isLastPage: currentPage === totalPages,
                         currentPage
-                    }, tagSlug, false, context);
+                    }, tagSlug, tagViewConfig, context);
                     let output = this.renderTemplate(compiledTemplates[fileSlug], context, this.globalContext, inputFile);
 
                     if (this.plugins.hasModifiers('htmlOutput')) {
-                        output = this.plugins.runModifiers('htmlOutput', this.renderer, output, this.globalContext); 
+                        output = this.plugins.runModifiers('htmlOutput', this, output, [this.globalContext, context]); 
                     }
 
                     if (offset === 0) {
@@ -1213,19 +1196,16 @@ class Renderer {
                 }
             }
 
-            if(ampMode) {
-                this.sendProgress(Math.ceil(97 + (progressIncrease * i)), 'Generating tag pages (' + (i+1) + '/' + tagIDs.length + ')');
-            } else {
-                this.sendProgress(Math.ceil(60 + (progressIncrease * i)), 'Generating tag pages (' + (i + 1) + '/' + tagIDs.length + ')');
-            }
+            this.sendProgress(Math.ceil(60 + (progressIncrease * i)), 'Generating tag pages (' + (i + 1) + '/' + tagIDs.length + ')');
         }
-        console.timeEnd(ampMode ? 'TAGS-AMP' : 'TAGS');
+
+        console.timeEnd('TAGS');
     }
 
     /*
      * Generate author pages
      */
-    generateAuthors(authorID = false, ampMode = false) {
+    generateAuthors(authorID = false) {
         if (
             (
                 this.themeConfig.supportedFeatures && 
@@ -1235,7 +1215,7 @@ class Renderer {
             return false;
         }
 
-        console.time(ampMode ? 'AUTHORS-AMP' : 'AUTHORS');
+        console.time('AUTHORS');
         // Create directory for authors
         let authorsDirPath = path.join(this.outputDir, this.siteConfig.advanced.urls.authorsPrefix);
 
@@ -1246,7 +1226,7 @@ class Renderer {
         // Get authors
         let authorsIDs = [];
         let authorsUsernames = [];
-        let inputFile = ampMode ? 'amp-author.hbs' : 'author.hbs';
+        let inputFile = 'author.hbs';
         let authorTemplates = [];
         let queryCondition = '';
 
@@ -1318,20 +1298,18 @@ class Renderer {
             return false;
         }
 
-        if (!ampMode) {
-            for (let i = 0; i < authorTemplates.length; i++) {
-                let fileSlug = authorTemplates[i];
+        for (let i = 0; i < authorTemplates.length; i++) {
+            let fileSlug = authorTemplates[i];
 
-                // When we meet default template - skip the compilation process
-                if (fileSlug === '' || fileSlug === 'DEFAULT') {
-                    continue;
-                }
+            // When we meet default template - skip the compilation process
+            if (fileSlug === '' || fileSlug === 'DEFAULT') {
+                continue;
+            }
 
-                compiledTemplates[fileSlug] = this.compileTemplate('author-' + fileSlug + '.hbs');
+            compiledTemplates[fileSlug] = this.compileTemplate('author-' + fileSlug + '.hbs');
 
-                if (!compiledTemplates[fileSlug]) {
-                    return false;
-                }
+            if (!compiledTemplates[fileSlug]) {
+                return false;
             }
         }
 
@@ -1339,10 +1317,7 @@ class Renderer {
         for (let i = 0; i < authorsData.length; i++) {
             let contextGenerator = new RendererContextAuthor(this);
             let fileSlug = 'DEFAULT';
-
-            if (!ampMode) {
-                fileSlug = authorTemplates[i] === '' ? 'DEFAULT' : authorTemplates[i];
-            }
+            fileSlug = authorTemplates[i] === '' ? 'DEFAULT' : authorTemplates[i];
 
             // Detect if we have enough posts to create pagination
             let totalNumberOfPosts = this.cachedItems.authors[authorsIDs[i]].postsNumber;
@@ -1362,11 +1337,12 @@ class Renderer {
                 }
 
                 inputFile = inputFile.replace('.hbs', '') + (fileSlug === 'DEFAULT' ? '' : '-' + fileSlug) + '.hbs';
-                this.globalContext = this.createGlobalContext('author', [], false, authorUsername, false, context);
+                let authorViewConfig = this.cachedItems.authors[authorsIDs[i]].authorViewConfig;
+                this.globalContext = this.createGlobalContext('author', [], false, authorUsername, authorViewConfig, context);
                 let output = this.renderTemplate(compiledTemplates[fileSlug], context, this.globalContext, inputFile);
 
                 if (this.plugins.hasModifiers('htmlOutput')) {
-                    output = this.plugins.runModifiers('htmlOutput', this.renderer, output, this.globalContext); 
+                    output = this.plugins.runModifiers('htmlOutput', this, output, [this.globalContext, context]); 
                 }
 
                 this.templateHelper.saveOutputAuthorFile(authorUsername, output, authorID !== false);
@@ -1418,16 +1394,17 @@ class Renderer {
                     }
 
                     inputFile = inputFile.replace('.hbs', '') + (fileSlug === 'DEFAULT' ? '' : '-' + fileSlug) + '.hbs';
+                    let authorViewConfig = this.cachedItems.authors[authorsIDs[i]].authorViewConfig;
                     this.globalContext = this.createGlobalContext('author', additionalContexts, {
                         pagination,
                         isFirstPage: currentPage === 1,
                         isLastPage: currentPage === totalPages,
                         currentPage
-                    }, authorUsername, false, context);
+                    }, authorUsername, authorViewConfig, context);
                     let output = this.renderTemplate(compiledTemplates[fileSlug], context, this.globalContext, inputFile);
 
                     if (this.plugins.hasModifiers('htmlOutput')) {
-                        output = this.plugins.runModifiers('htmlOutput', this.renderer, output, this.globalContext); 
+                        output = this.plugins.runModifiers('htmlOutput', this, output, [this.globalContext, context]); 
                     }
 
                     if (offset === 0) {
@@ -1439,7 +1416,7 @@ class Renderer {
                 }
             }
         }
-        console.timeEnd(ampMode ? 'AUTHORS-AMP' : 'AUTHORS');
+        console.timeEnd('AUTHORS');
     }
 
     /*
@@ -1473,7 +1450,7 @@ class Renderer {
         let output = this.renderTemplate(compiledTemplate, context, this.globalContext, inputFile);
 
         if (this.plugins.hasModifiers('htmlOutput')) {
-            output = this.plugins.runModifiers('htmlOutput', this.renderer, output, this.globalContext); 
+            output = this.plugins.runModifiers('htmlOutput', this, output, [this.globalContext, context]); 
         }
 
         this.templateHelper.saveOutputFile(this.siteConfig.advanced.urls.errorPage, output);
@@ -1510,7 +1487,7 @@ class Renderer {
         let output = this.renderTemplate(compiledTemplate, context, this.globalContext, inputFile);
 
         if (this.plugins.hasModifiers('htmlOutput')) {
-            output = this.plugins.runModifiers('htmlOutput', this.renderer, output, this.globalContext); 
+            output = this.plugins.runModifiers('htmlOutput', this, output, [this.globalContext, context]); 
         }
 
         this.templateHelper.saveOutputFile(this.siteConfig.advanced.urls.searchPage, output);
@@ -1689,11 +1666,11 @@ class Renderer {
         let output = this.renderTemplate(compiledTemplate, context, false, 'feed-' + format + '.hbs');
 
         if (format === 'xml' && this.plugins.hasModifiers('feedXmlOutput')) {
-            output = this.plugins.runModifiers('feedXmlOutput', this.renderer, output, context); 
+            output = this.plugins.runModifiers('feedXmlOutput', this, output, context); 
         }
 
         if (format === 'json' && this.plugins.hasModifiers('feedJsonOutput')) {
-            output = this.plugins.runModifiers('feedXmlOutput', this.renderer, output, context); 
+            output = this.plugins.runModifiers('feedJsonOutput', this, output, context); 
         }
 
         this.templateHelper.saveOutputFile('feed.' + format, output);
@@ -1710,38 +1687,6 @@ class Renderer {
         console.timeEnd("SITEMAP");
     }
 
-    generateAMP() {
-        if(!this.siteConfig.advanced.ampIsEnabled) {
-            return;
-        }
-
-        console.time("AMP");
-        // Prepared directory
-        fs.mkdirSync(path.join(this.outputDir, 'amp'));
-        // Enable amp mode
-        this.ampMode = true;
-        // Change template helper output dir
-        this.outputDir = path.join(this.outputDir, 'amp');
-        this.templateHelper.outputDir = path.join(this.templateHelper.outputDir, 'amp');
-        // Extend domain with /amp/ directory
-        this.siteConfig.domain += '/amp';
-        // Regenerate data for AMP mode
-        this.loadContentStructure();
-        // Prepare files
-        this.generateFrontpage(true);
-        this.generatePosts(true);
-
-        if (RendererHelpers.getRendererOptionValue('createTagPages', this.themeConfig)) {
-            this.generateTags(false, true);
-        }
-
-        if (RendererHelpers.getRendererOptionValue('createAuthorPages', this.themeConfig)) {
-            this.generateAuthors(false, true);
-        }
-
-        console.timeEnd("AMP");
-    }
-
     /**
      * Copy input files to the output directory
      */
@@ -1749,7 +1694,7 @@ class Renderer {
         console.time("FILES");
         let postIDs = Object.keys(this.cachedItems.posts);
         FilesHelper.copyRootFiles(this.inputDir, this.outputDir);
-        FilesHelper.copyAssetsFiles(this.themeDir, this.outputDir, this.themeConfig);
+        await FilesHelper.copyAssetsFiles(this.themeDir, this.outputDir, this.themeConfig);
         FilesHelper.copyDynamicAssetsFiles(this.themeDir, this.outputDir, this.themeConfig);
         await FilesHelper.copyMediaFiles(this.inputDir, this.outputDir, postIDs);
         await FilesHelper.copyPluginFiles(this.inputDir, this.outputDir, this.pluginsDir);
@@ -1873,10 +1818,22 @@ class Renderer {
         if (this.siteConfig.advanced && this.siteConfig.advanced.noIndexThisPage) {
             robotsTxtContent = `User-agent: *\nDisallow: /`;
         } else {
-            robotsTxtContent = `User-agent: *\nDisallow:`;
+            if (this.siteConfig.advanced && this.siteConfig.advanced.noIndexForChatGPTUser) {
+                robotsTxtContent += `User-agent: ChatGPT-User\nDisallow: /\n`;
+            }
+
+            if (this.siteConfig.advanced && this.siteConfig.advanced.noIndexForChatGPTBot) {
+                robotsTxtContent += `User-agent: GPTBot\nDisallow: /\n`;
+            }
+
+            if (this.siteConfig.advanced && this.siteConfig.advanced.noIndexForCommonCrawlBots) {
+                robotsTxtContent += `User-agent: CCBot\nDisallow: /\n`;
+            }
+
+            robotsTxtContent += `User-agent: *\nDisallow:\n`;
 
             if (this.siteConfig.advanced.sitemapEnabled && !this.siteConfig.deployment.relativeUrls) {
-                robotsTxtContent += `\nSitemap: ${this.siteConfig.originalDomain}/sitemap.xml`;
+                robotsTxtContent += `Sitemap: ${this.siteConfig.originalDomain}/sitemap.xml`;
             }
         }
 
@@ -1888,11 +1845,6 @@ class Renderer {
      */
     async relativizeUrls () {
         let catalog = this.outputDir;
-
-        if (catalog.substr(-4) === '/amp') {
-            catalog = catalog.slice(0, -4);
-        }
-
         let files = await listAll([catalog], { recurse: true, flatten: true });
         files = files.filter(file => file.path.substr(-5) === '.html' && file.mode.dir === false);
         files = files.map(file => file.path);

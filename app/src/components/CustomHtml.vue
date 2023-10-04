@@ -92,8 +92,6 @@ export default {
                 this.$t('customHTML.tabs.searchInput'),
                 this.$t('customHTML.tabs.searchContent'),
                 this.$t('customHTML.tabs.footer'),
-                this.$t('customHTML.tabs.ampHead'),
-                this.$t('customHTML.tabs.ampFooter')
             ],
             requiredFeatures: {
                 'custom-head-code': [],
@@ -101,9 +99,7 @@ export default {
                 'custom-comments-code': ['customComments'],
                 'custom-search-input': ['customSearch'],
                 'custom-search-content': ['customSearch'],
-                'custom-footer-code': [],
-                'custom-head-amp-code': [],
-                'custom-footer-amp-code': []
+                'custom-footer-code': []
             },
             editors: {},
             loadedEditors: 0
@@ -172,9 +168,7 @@ export default {
                 'custom-comments-code': this.$store.state.currentSite.config.advanced.customCommentsCode,
                 'custom-search-input': this.$store.state.currentSite.config.advanced.customSearchInput,
                 'custom-search-content': this.$store.state.currentSite.config.advanced.customSearchContent,
-                'custom-footer-code': this.$store.state.currentSite.config.advanced.customFooterCode,
-                'custom-head-amp-code': this.$store.state.currentSite.config.advanced.customHeadAmpCode,
-                'custom-footer-amp-code': this.$store.state.currentSite.config.advanced.customFooterAmpCode
+                'custom-footer-code': this.$store.state.currentSite.config.advanced.customFooterCode
             };
 
             if(
@@ -239,10 +233,8 @@ export default {
             let newSettings = {
                 advanced: {
                     customHeadCode: document.getElementById('custom-head-code').value,
-                    customHeadAmpCode: document.getElementById('custom-head-amp-code').value,
                     customBodyCode: document.getElementById('custom-body-code').value,
                     customFooterCode: document.getElementById('custom-footer-code').value,
-                    customFooterAmpCode: document.getElementById('custom-footer-amp-code').value,
                     customHTML: {}
                 }
             };
@@ -251,10 +243,8 @@ export default {
                 let id = customCodeEditor.getAttribute('id');
                 let excludedIDs = [
                     'custom-head-code',
-                    'custom-head-amp-code',
                     'custom-body-code',
-                    'custom-footer-code',
-                    'custom-footer-amp-code'
+                    'custom-footer-code'
                 ];
 
                 if(!id || excludedIDs.indexOf(id) > -1) {
@@ -308,7 +298,7 @@ export default {
         saveAndRender (renderingType = false) {
             this.save(true, renderingType, true);
         },
-        saved (newSettings, showPreview, renderingType = false, renderFiles = false) {
+        async saved (newSettings, showPreview, renderingType = false, renderFiles = false) {
             let siteName = this.$store.state.currentSite.config.name;
 
             this.$store.commit('refreshSiteConfig', {
@@ -317,7 +307,9 @@ export default {
             });
 
             if (showPreview) {
-                if (this.$store.state.app.config.previewLocation !== '' && !mainProcessAPI.existsSync(this.$store.state.app.config.previewLocation)) {
+                let previewLocationExists = await mainProcessAPI.existsSync(this.$store.state.app.config.previewLocation);
+
+                if (this.$store.state.app.config.previewLocation !== '' && !previewLocationExists) {
                     this.$bus.$emit('confirm-display', {
                         message: this.$t('sync.previewCatalogDoesNotExistInfo'),
                         okLabel: this.$t('sync.goToAppSettings'),

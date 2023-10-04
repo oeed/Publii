@@ -107,8 +107,8 @@
                     :title="$t('sync.netlify')"
                     class="server-settings-grid-item">
                    <icon
-                      customWidth="102"
-                      customHeight="48"
+                      customWidth="112"
+                      customHeight="46"
                       name="netlify"
                       iconset="svg-map-server"/>
                 </div>
@@ -379,7 +379,7 @@
                 </field>
 
                 <field
-                    v-if="['ftp+tls'].indexOf(deploymentMethodSelected) > -1"
+                    v-if="['ftp+tls', 'gitlab-pages'].indexOf(deploymentMethodSelected) > -1"
                     id="rejectunauthorized"
                     :label="$t('sync.certificates')"
                     :labelSeparated="true">
@@ -614,7 +614,7 @@
                         {{ $t('sync.serverGitLabNote') }}
                     </small>
                 </field>
-
+                
                 <field
                     v-if="deploymentMethodSelected === 'gitlab-pages'"
                     id="gl-repo"

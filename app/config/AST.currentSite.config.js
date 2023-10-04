@@ -37,7 +37,11 @@ const AstCurrentSiteConfig = {
         metaTitle: '%sitename',
         metaDescription: '',
         noIndexThisPage: false,
+        noIndexForChatGPTBot: false,
+        noIndexForChatGPTUser: false,
+        noIndexForCommonCrawlBots: false,
         homepageNoIndexPagination: false,
+        homepageNoPagination: false,
         metaRobotsIndex: 'index, follow',
         postMetaTitle: '%posttitle - %sitename ',
         postMetaDescription: '',
@@ -89,28 +93,12 @@ const AstCurrentSiteConfig = {
             errorPage: '404.html',
             searchPage: 'search.html'
         },
-        ampIsEnabled: 0,
-        ampPrimaryColor: '#039be5',
-        ampImage: '',
-        ampShare: 1,
-        ampShareSystem: 1,
-        ampShareFacebook: 1,
-        ampShareFacebookId: '',
-        ampShareTwitter: 1,
-        ampSharePinterest: 1,
-        ampShareLinkedIn: 1,
-        ampShareTumblr: 1,
-        ampShareWhatsapp: 1,
-        ampFooterText: '',
-        ampGaId: '',
         customHeadCode: '',
-        customHeadAmpCode: '',
         customBodyCode: '',
         customCommentsCode: '',
         customSearchInput: '',
         customSearchContent: '',
         customFooterCode: '',
-        customFooterAmpCode: '',
         gdpr: {
             enabled: false,
             popupTitlePrimary: 'This website uses cookies',
@@ -155,6 +143,7 @@ const AstCurrentSiteConfig = {
         relatedPostsIncludeAllPosts: true,
         editors: {
             wysiwygAdditionalValidElements: '',
+            customElements: '',
             codemirrorTabSize: 4,
             codemirrorAutoIndent: true
         }
@@ -193,6 +182,7 @@ const AstCurrentSiteConfig = {
         },
         gitlab: {
             server: 'https://gitlab.com/',
+            rejectUnauthorized: true,
             repo: '',
             branch: '',
             token: ''

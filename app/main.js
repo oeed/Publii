@@ -13,6 +13,9 @@ const createSlug = require('./back-end/helpers/slug.js');
 const passwordSafeStorage = require('keytar');
 const ContextMenuBuilder = require('./back-end/helpers/context-menu-builder.js');
 const { default: installExtension, VUEJS_DEVTOOLS } = require('electron-devtools-installer');
+const fs = require('fs');
+const crypto = require('crypto');
+const normalizePath = require('normalize-path');
 
 if (typeof process.env.NODE_ENV === 'undefined') {
     process.env.NODE_ENV = 'production';
@@ -40,8 +43,13 @@ electronApp.on('ready', function () {
         global.spellCheckerLanguage = new String(language).replace(/[^a-z\-_]/gmi, '');
     });
 
+    ipcMain.handle('publii-shell-show-item-in-folder', (event, url) => electron.shell.showItemInFolder(url));
+    ipcMain.handle('publii-shell-open-path', (event, filePath) => electron.shell.openPath(filePath));
+    ipcMain.handle('publii-shell-open-external', (event, url) => electron.shell.openExternal(url));
+    ipcMain.handle('publii-native-exists-sync', (event, pathToCheck) => fs.existsSync(pathToCheck));
+    ipcMain.handle('publii-native-md5', (event, value) => crypto.createHash('md5').update(value).digest('hex'));
+    ipcMain.handle('publii-native-normalize-path', (event, pathToNormalize) => normalizePath(pathToNormalize));
     ipcMain.handle('publii-get-spellchecker-language', (event) => global.spellCheckerLanguage);
-
     ipcMain.handle('app-main-set-spellchecker-language-for-webview', (event, webContentsID, languages) => webContents.fromId(webContentsID).session.setSpellCheckerLanguages(languages));
     
     ipcMain.handle('app-main-webview-search-find-in-page', (event, searchPhrase, searchConfig = null) => {

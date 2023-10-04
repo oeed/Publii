@@ -33,6 +33,7 @@ class AuthorItem {
     prepareData() {
         let addIndexHtml = this.renderer.previewMode || this.renderer.siteConfig.advanced.urls.addIndex ? 'index.html' : '';
         let authorConfig = this.author.config ? JSON.parse(this.author.config) : {};
+        let additionalData = this.author.additional_data ? JSON.parse(this.author.additional_data) : {};
 
         this.authorData = {
             id: this.authorID,
@@ -47,6 +48,7 @@ class AuthorItem {
             url: '',
             featuredImage: {},
             config: authorConfig,
+            additionalData: additionalData,
             template: authorConfig.template ? authorConfig.template : ''
         };
 
@@ -62,7 +64,7 @@ class AuthorItem {
 
         if(typeof this.authorData.avatar === 'string') {
             if (AvatarHelper.isLocalAvatar(this.authorData.avatar)) {
-                let domain = this.renderer.siteConfig.domain.replace(/\/amp$/m, '/');
+                let domain = this.renderer.siteConfig.domain;
                 let avatarUrl = path.join(domain, 'media', 'website', this.authorData.avatar);
                 avatarUrl = normalizePath(avatarUrl);
                 this.authorData.avatar = URLHelper.fixProtocols(avatarUrl);
@@ -112,6 +114,15 @@ class AuthorItem {
         }
 
         return 0;
+    }
+
+    /**
+     * Stores author view configuration in cached items
+     * 
+     * @param {*} config 
+     */
+    setAuthorViewConfig(config) {
+        this.renderer.cachedItems.authors[this.authorID].authorViewConfig = config;
     }
 }
 

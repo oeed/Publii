@@ -1,5 +1,7 @@
 <template>
-  <div :class="{ 'publii-block-image-wrapper': true, 'is-empty': isEmpty }">
+  <div 
+    :class="{ 'publii-block-image-wrapper': true, 'is-empty': isEmpty }"
+    @click="resetDeleteConfirmation">
     <figure
       v-if="view === 'preview' || content.image !== ''"
       ref="block"
@@ -11,10 +13,20 @@
         :width="content.imageWidth" />
 
       <button
-        v-if="!editor.bulkOperationsMode && !!content.image"
+        v-if="!!content.image && !confirmDelete"
         class="publii-block-image-delete"
         @click.stop.prevent="clearImage()">
         <icon name="trash" />
+      </button>
+
+      <button
+        v-if="!!content.image && confirmDelete"
+        class="publii-block-image-delete is-active has-tooltip"
+        @click.stop.prevent="clearImage()">
+        <icon name="open-trash" />
+        <span class="ui-tooltip has-bigger-space">
+          {{ $t('editor.clickToConfirm') }}
+        </span>
       </button>
 
       <figcaption v-if="content.caption !== '' && view === 'preview'">
@@ -23,17 +35,11 @@
     </figure>
 
     <div
-      v-if="content.image === '' && editor.bulkOperationsMode"
-      class="publii-block-image-empty-state">
-      {{ $t('editor.emptyImageBlock') }}
-    </div>
-
-    <div
-      v-if="(content.image === '' && !editor.bulkOperationsMode) || $parent.uiOpened"
+      v-if="(content.image === '') || $parent.uiOpened"
       :class="{ 'publii-block-image-form': true, 'is-visible': true }"
       ref="block">
       <div
-        v-if="content.image === '' && !editor.bulkOperationsMode"
+        v-if="content.image === ''"
         :class="{ 'publii-block-image-uploader': true, 'is-hovered': isHovered }"
         @drag.stop.prevent
         @dragstart.stop.prevent
@@ -63,7 +69,7 @@
       </div>
 
       <input
-        v-if="!editor.bulkOperationsMode && $parent.uiOpened"
+        v-if="$parent.uiOpened"
         type="text"
         @focus="updateCurrentBlockID"
         @keydown="handleCaptionKeyboard"
@@ -73,7 +79,7 @@
         :placeholder="$t('image.enterCaption')"
         ref="contentCaption" />
       <input
-        v-if="!editor.bulkOperationsMode && $parent.uiOpened"
+        v-if="$parent.uiOpened"
         type="text"
         @focus="updateCurrentBlockID"
         @keydown="handleAltKeyboard"
@@ -113,19 +119,13 @@ export default {
     'icon': EditorIcon,
     'top-menu': TopMenuUI
   },
-  watch: {
-    'editor.bulkOperationsMode': function (newValue, oldValue) {
-      if (newValue === false && oldValue === true && this.content.image === '') {
-        this.setView('code');
-      }
-    }
-  },
   data () {
     return {
       caretIsAtStartCaption: false,
       caretIsAtEndCaption: false,
       caretIsAtStartAlt: false,
       caretIsAtEndAlt: false,
+      confirmDelete: false,
       isHovered: false,
       imageUploadInProgress: false,
       config: {
@@ -288,8 +288,12 @@ export default {
       document.getElementById('post-editor-fake-image-uploader').click();
     },
     clearImage () {
-      this.content.image = '';
-      this.isHovered = false;
+      if (!this.confirmDelete) {
+        this.confirmDelete = true;
+      } else {
+        this.content.image = '';
+        this.isHovered = false;
+      }
     },
     setView (newView) {
       if (
@@ -297,11 +301,6 @@ export default {
         newView === 'preview'
       ) {
         this.save();
-      }
-
-      if (this.editor.bulkOperationsMode) {
-        this.view = 'preview';
-        return;
       }
 
       if (
@@ -431,6 +430,9 @@ export default {
         config: JSON.parse(JSON.stringify(this.config)),
         content: JSON.parse(JSON.stringify(this.content))
       });
+    },
+    resetDeleteConfirmation () {
+      this.confirmDelete = false;
     }
   },
   beforeDestroy () {
@@ -484,18 +486,18 @@ export default {
     display: flex;
     height: 34px;
     justify-content: center;
-    left: 20px;
+    left: 15px;
     opacity: 0;
     pointer-events: none;
     position: absolute;
-    top: 20px;
+    top: 15px;
     transition: var(--transition);
     will-change: transform;
     width: 34px;
     z-index: 2;
 
     svg {
-       fill: var(--white);
+       color: var(--white);
     }
 
     &:active,

@@ -1,5 +1,7 @@
 <template>
-    <div :id="anchor">
+    <div 
+        :id="anchor"
+        :class="cssClasses">
         <textarea
             :id="editorID"
             :data-id="editorID"
@@ -59,6 +61,35 @@ export default {
         placeholder: {
             default: '',
             type: String
+        },
+        miniEditorMode: {
+            default: false,
+            type: Boolean
+        },
+        simplifiedToolbar: {
+            default: false,
+            type: Boolean
+        },
+        customCssClasses: {
+            default: '',
+            type: String
+        }
+    },
+    computed: {
+        cssClasses () {
+            let cssClasses = { 
+                'wysiwyg-mini-editor': this.miniEditorMode, 
+                'has-simplified-toolbar': this.simplifiedToolbar 
+            };
+
+            if (this.customCssClasses && this.customCssClasses.trim() !== '') {
+                this.customCssClasses.split(' ').forEach(item => {
+                    item = item.replace(/[^a-z0-9\-\_\s]/gmi, '');
+                    cssClasses[item] = true;
+                });
+            }
+
+            return cssClasses;
         }
     },
     data: function() {
@@ -89,6 +120,16 @@ export default {
                 }
             });
 
+            this.$bus.$on('view-settings-before-save', () => {
+                if (this.wysiwyg) {
+                    tinymce.triggerSave();
+
+                    setTimeout(() => {
+                        this.content = tinymce.get(this.editorID).getContent();
+                    }, 250);
+                }
+            });
+
             this.$bus.$on('plugin-settings-before-save', () => {
                 if (this.wysiwyg) {
                     tinymce.triggerSave();
@@ -114,7 +155,9 @@ export default {
         async initWysiwyg () {
             let self = this;
             let customFormats = this.loadCustomFormatsFromTheme();
-            let secondToolbarStructure = "formatselect removeformat undo redo code";
+            let pluginsList = "autolink link lists paste code";
+            let firstToolbarStructure = "bold italic link unlink forecolor blockquote alignleft aligncenter alignright bullist numlist formatselect removeformat code";
+            let secondToolbarStructure = "";
 
             if (customFormats.length) {
                 secondToolbarStructure = "styleselect formatselect removeformat undo redo code";
@@ -124,16 +167,23 @@ export default {
                 tinymce.addI18n('custom', this.$store.state.wysiwygTranslation);
             }
 
+            if (this.simplifiedToolbar) {
+                pluginsList = "autolink link paste code";
+                firstToolbarStructure = "bold italic link unlink forecolor alignleft aligncenter alignright removeformat code";
+                secondToolbarStructure = "";
+            }
+
             tinymce.init({
                 selector: 'textarea[data-id="' + this.editorID + '"]',
                 language: this.$store.state.wysiwygTranslation ? 'en' : 'custom',
                 content_css: this.getTinyMCECSSFiles(),
-                plugins: "autolink link lists paste code",
-                toolbar1: "bold italic link unlink forecolor blockquote alignleft aligncenter alignright alignjustify bullist numlist",
+                plugins: pluginsList,
+                toolbar1: firstToolbarStructure,
                 toolbar2: secondToolbarStructure,
                 toolbar3: "",
+                icons: 'publii',   
                 preview_styles: false,
-                resize: false,
+                resize: true,
                 menubar: false,
                 forced_root_block: "",
                 force_br_newlines: false,
@@ -152,6 +202,7 @@ export default {
                 height: 320,
                 entity_encoding: "raw",
                 allow_script_urls: true,
+                convert_urls: false,
                 style_formats: customFormats,
                 contextmenu: false,
                 browser_spellcheck: this.$store.state.currentSite.config.spellchecking,
@@ -246,7 +297,7 @@ export default {
             let customEditorCSS = pathToEditorCSS;
 
             return [
-                'css/editor-options.css?v=0710',
+                'css/editor-options.css?v=0711',
                 customEditorCSS
             ].join(',');
         }
@@ -255,6 +306,8 @@ export default {
         if (this.wysiwyg) {
             tinymce.remove();
             this.$bus.$off('theme-settings-before-save');
+            this.$bus.$off('plugin-settings-before-save');
+            this.$bus.$off('view-settings-before-save');
         }
     }
 }

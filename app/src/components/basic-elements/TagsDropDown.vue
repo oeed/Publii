@@ -9,6 +9,7 @@
         @select="closeDropdown()"
         :multiple="multiple"
         :id="anchor"
+        :class="customCssClasses.replace(/[^a-z0-9\-\_\s]/gmi, '')"
         :placeholder="placeholder"></v-select>
 </template>
 
@@ -22,6 +23,10 @@ export default {
         },
         value: {},
         anchor: {
+            default: '',
+            type: String
+        },
+        customCssClasses: {
             default: '',
             type: String
         }
@@ -84,6 +89,6 @@ export default {
 }
 
 .multiselect__input {
-    max-width: 120px;
+    max-width: 100%;
 }
 </style>

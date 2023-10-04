@@ -1,7 +1,7 @@
 <template>
     <div
         :id="anchor"
-        :class="{ 'small-image-upload': true, 'is-uploading': isUploading }">
+        :class="cssClasses">
         <span class="upload-path">
             <template v-if="!isUploading">{{ fileName }}</template>
             <template v-if="isUploading">{{ $t('image.loadingImage') }}</template>
@@ -53,6 +53,27 @@ export default {
         pluginDir: {
             default: '',
             type: String
+        },
+        customCssClasses: {
+            default: '',
+            type: String
+        }
+    },
+    computed: {
+        cssClasses () {
+            let cssClasses = { 
+                'small-image-upload': true, 
+                'is-uploading': this.isUploading 
+            };
+
+            if (this.customCssClasses && this.customCssClasses.trim() !== '') {
+                this.customCssClasses.split(' ').forEach(item => {
+                    item = item.replace(/[^a-z0-9\-\_\s]/gmi, '');
+                    cssClasses[item] = true;
+                });
+            }
+
+            return cssClasses;
         }
     },
     data () {
@@ -114,7 +135,7 @@ export default {
 
             mainProcessAPI.send('app-image-upload', uploadData);
 
-            mainProcessAPI.receiveOnce('app-image-uploaded', (data) => {
+            mainProcessAPI.receiveOnce('app-image-uploaded', async (data) => {
                 let dir = 'media/website/';
 
                 if (this.imageType === 'pluginImages') {
@@ -122,7 +143,8 @@ export default {
                 }
 
                 this.isEmpty = false;
-                this.fileName = dir + mainProcessAPI.normalizePath(data.baseImage.newPath).split('/').pop();
+                let newPath = await mainProcessAPI.normalizePath(data.baseImage.newPath);
+                this.fileName = dir + newPath.split('/').pop();
                 this.isUploading = false;
             });
         },

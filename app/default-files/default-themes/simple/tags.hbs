@@ -24,7 +24,9 @@
          <div class="wrapper">
             <h1>
                {{ translate 'tags.tagsPageTitle' }} 
-               <sup>({{tagsNumber}})</sup>
+               {{#if @config.custom.tagsTagCount}}
+                  <sup>({{tagsNumber}})</sup>
+               {{/if}}
             </h1>
             <p>
                {{ translate 'tags.description' }}
@@ -36,7 +38,7 @@
       <ul class="feed feed--grid">
          {{#each tags}}
             <li>
-               <h2>
+               <h2 class="h4">
                   <a href="{{url}}">
                      {{name}}
                   </a>
@@ -44,10 +46,10 @@
                      <sup>({{postsNumber}})</sup>
                   {{/if}}
                </h2>
-               {{#checkIfAll @config.custom.tagsDescription  description}}
-                  <p>
-                     {{description}}
-                  </p>
+               {{#checkIfAll @config.custom.tagsDescription description}}
+                  <div class="feed--grid-tag-desc">
+                     {{{description}}}
+                  </div>
                {{/checkIfAll}}
             </li>
          {{/each}}

@@ -109,6 +109,26 @@
                 border-top: none;
             }
         }
+
+        &-slug {
+            position: relative;
+
+            input {
+                padding-right: 6rem;
+            }
+
+            .button {
+                border-radius: 3px;
+                bottom: 0;
+                height: calc(100% - 4px);
+                margin: 2px;
+                padding: 0;
+                position: absolute;
+                right: 0;
+                top: 0;
+                width: 43px;
+            }
+        }
     }
 
     &-header {
@@ -233,5 +253,20 @@
 
     .msg {
         font-size: 1.3rem;
+    }
+
+    .note {
+        clear: both;
+        color: var(--text-light-color);
+        display: block;
+        font-style: italic;
+        font-weight: var(--font-weight-normal);
+        line-height: 1.4;
+        padding-top: .5rem;
+
+        &.is-warning {
+            color: var(--warning);
+            opacity: 1;
+        }
     }
 }

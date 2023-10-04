@@ -18,6 +18,7 @@ export default {
         state.themes = initialData.themes;
         state.themesPath = initialData.themesPath;
         state.dirs = initialData.dirs;
+        state.vendorPath = initialData.vendorPath;
         state.wysiwygTranslation = initialData.currentLanguage.wysiwygTranslation;
 
         // Set default ordering based on the app config
@@ -277,6 +278,7 @@ export default {
     },
     setMenuPosition (state, newPositionData) {
         state.currentSite.menuStructure[newPositionData.index].position = newPositionData.position;
+        state.currentSite.menuStructure[newPositionData.index].maxLevels = newPositionData.maxLevels ? newPositionData.maxLevels : ''; 
     },
     addNewMenu (state, newMenuName) {
         state.currentSite.menuStructure.push({
@@ -431,6 +433,8 @@ export default {
         state.currentSite.themeSettings.config = data.newConfig.config.slice();
         state.currentSite.themeSettings.customConfig = data.newConfig.customConfig.slice();
         state.currentSite.themeSettings.postConfig = data.newConfig.postConfig.slice();
+        state.currentSite.themeSettings.tagConfig = data.newConfig.tagConfig.slice();
+        state.currentSite.themeSettings.authorConfig = data.newConfig.authorConfig.slice();
         state.currentSite.themeSettings.defaultTemplates = JSON.parse(JSON.stringify(data.newConfig.defaultTemplates));
     },
     setEditorOpenState (state, isOpened) {

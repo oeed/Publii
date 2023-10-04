@@ -453,9 +453,9 @@ class Post extends Model {
         this.db.prepare(`DELETE FROM posts_tags WHERE post_id = @id`).run({ id: this.id });
 
         // For case when there is no tags - check it
-        if(this.tags) {
+        if (this.tags) {
             // Split tags into an array
-            let tagsToSave = this.tags.split(',');
+            let tagsToSave = JSON.parse(JSON.stringify(this.tags));
 
             // Remove empty tags
             tagsToSave = tagsToSave.filter(function (item) {
@@ -507,7 +507,6 @@ class Post extends Model {
 
         if(this.application.sites[this.site].advanced.urls.cleanUrls) {
             restrictedSlugs = [
-                'amp',
                 'assets',
                 'media',
                 this.application.sites[this.site].advanced.urls.authorsPrefix

@@ -133,7 +133,8 @@
         
         .tox-tbtn {
             svg {
-                fill: var(--icon-tertiary-color);
+                color: var(--icon-tertiary-color);
+                fill: none;
             }
         }
 
@@ -304,7 +305,8 @@
             }
            
             svg {
-               fill: var(--icon-tertiary-color);
+               color: var(--icon-tertiary-color);
+               fill: none;
             }
         }
 
@@ -363,6 +365,7 @@ body {
         
         &-tinymce {
             border-color: var(--input-border-color);
+            border-radius: 3px;
         }
         
         .tox-toolbar, 
@@ -567,7 +570,8 @@ body {
         }   
         
         .tox-listbox__select-chevron svg {
-            fill: var(--icon-primary-color); 
+            color: var(--icon-primary-color); 
+            fill: none;
         }
         
         .tox-tbtn {
@@ -577,7 +581,8 @@ body {
             transition: var(--transition);
             
             svg {
-                 fill: var(--icon-primary-color); 
+                color: var(--icon-primary-color); 
+                 fill: none;
             }
             
             &:active,
@@ -589,7 +594,8 @@ body {
                 color: var(--text-primary-color);
                 
                 svg {
-                   fill: var(--icon-tertiary-color);
+                    color: var(--icon-tertiary-color);
+                   fill: none;
                 }
             }
             
@@ -597,7 +603,8 @@ body {
                 color: var(--text-primary-color);
                 
                 svg {
-                   fill: var(--icon-tertiary-color);
+                   color: var(--icon-tertiary-color);
+                   fill: none;
                 }
             }  
             
@@ -636,11 +643,20 @@ body {
                 color: var(--text-light-color);
                 
                 &-caret svg {
-                    fill: var(--icon-primary-color); 
+                    color: var(--icon-primary-color); 
+                    fill: none;
                 }
                 
                 &-accessory {
                     color: var(--text-light-color);
+                }
+
+                &-checkmark,
+                &-icon {
+                    svg {
+                        color: currentColor;
+                        fill: none;
+                    }
                 }
             }
             
@@ -758,6 +774,40 @@ body {
     }
 }
 
+/*
+ * Mini WYSIWYG editor
+ */
+body .wysiwyg-mini-editor {
+    
+
+    .tox-toolbar-overlord {
+        padding: 3px 5px;
+    }
+
+    .tox-tbtn {
+        transform: scale(.9);
+    }
+
+    .tox-split-button__chevron {
+        width: 16px;
+    }
+
+    .tox-tbtn--select {
+        width: auto;
+    }
+
+    .tox-tbtn__select-label {
+        margin: 0;
+    }
+
+    .tox-statusbar__resize-handle {
+        margin-top: 4px;
+    }
+
+    .tox-statusbar__resize-handle svg {
+        fill: var(--icon-secondary-color);
+    }
+}
 
 
 /*

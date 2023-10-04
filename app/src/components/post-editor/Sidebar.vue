@@ -297,7 +297,7 @@
                             ref="seo-content">
                             <div class="post-seo">
                                 <label>{{ $t('post.postSlug') }}:
-                                    <div class="post-seo-container">
+                                    <div class="options-sidebar-item-slug">
                                         <input
                                             type="text"
                                             v-model="$parent.postData.slug"
@@ -305,7 +305,7 @@
                                             @keyup="$parent.slugUpdated">
                                         <p-button 
                                             :onClick="updateSlug" 
-                                            :title="$t('post.updateSlug')"
+                                            :title="$t('ui.updateSlug')"
                                             icon="refresh"
                                             type="secondary icon">
                                         </p-button>
@@ -464,7 +464,8 @@
                                     <color-picker
                                         v-if="field.type === 'colorpicker'"
                                         class="post-view-settings"
-                                        v-model="$parent.postData.postViewOptions[field.name]">
+                                        v-model="$parent.postData.postViewOptions[field.name]"
+                                        :outputFormat="field.outputFormat ? field.outputFormat : 'RGBAorHEX'">
                                     </color-picker>
 
                                     <small
@@ -627,7 +628,6 @@ export default {
             this.tagIsRestricted = false;
 
             let restrictedSlugs = [
-                'amp',
                 'assets',
                 'media',
                 this.$store.state.currentSite.config.advanced.urls.authorsPrefix,
@@ -910,48 +910,11 @@ export default {
             }
         }
 
-        .note {
-            clear: both;
-            color: var(--text-light-color);
-            display: block;
-            font-style: italic;
-            font-weight: var(--font-weight-normal);
-            line-height: 1.4;
-            padding-top: .5rem;
-
-            &.is-warning {
-                color: var(--warning);
-                opacity: 1;
-            }
-        }
-
         .switcher-item-icon-helper {
             margin: 0 .5rem;
             position: relative;
             top: .1rem;
         }
-    }
-}
-
-
-.post-seo {
-    &-container {
-        position: relative;
-    }
-
-    input {
-        padding-right: 6rem;
-    }
-   .button {
-        border-radius: 3px;
-        bottom: 0;
-        height: calc(100% - 4px);
-        margin: 2px;
-        padding: 0;
-        position: absolute;
-        right: 0;
-        top: 0;  
-        width: 43px;
     }
 }
 

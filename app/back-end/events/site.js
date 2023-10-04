@@ -153,15 +153,6 @@ class SiteEvents {
 
             if(
                 config.settings.advanced &&
-                config.settings.advanced.ampImage &&
-                config.settings.advanced.ampImage !== ''
-            ) {
-                let filename = path.parse(config.settings.advanced.ampImage);
-                config.settings.advanced.ampImage = filename.base;
-            }
-
-            if(
-                config.settings.advanced &&
                 config.settings.advanced.openGraphImage &&
                 config.settings.advanced.openGraphImage !== ''
             ) {
@@ -316,8 +307,11 @@ class SiteEvents {
 
             let themesHelper = new Themes(appInstance, { site: siteName });
             let themeConfigPath = path.join(appInstance.sitesDir, siteName, 'input', 'config', 'theme.config.json');
-            let themeConfigString = fs.readFileSync(themeConfigPath, 'utf8');
-            themesHelper.checkAndCleanImages(themeConfigString);
+
+            if (fs.existsSync(themeConfigPath)) {
+                let themeConfigString = fs.readFileSync(themeConfigPath, 'utf8');
+                themesHelper.checkAndCleanImages(themeConfigString);
+            }
 
             // Send success message
             event.sender.send('app-site-config-saved', {
@@ -369,6 +363,8 @@ class SiteEvents {
                     config: themeConfig.config,
                     customConfig: themeConfig.customConfig,
                     postConfig: themeConfig.postConfig,
+                    tagConfig: themeConfig.tagConfig,
+                    authorConfig: themeConfig.authorConfig,
                     defaultTemplates: themeConfig.defaultTemplates
                 }
             });

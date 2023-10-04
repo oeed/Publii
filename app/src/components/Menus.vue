@@ -1,5 +1,10 @@
 <template>
-    <section :class="{ 'content': true, 'menu': true, 'menus-list-view': true, 'no-scroll': editorVisible }">
+    <section :class="{ 
+        'content': true, 
+        'menu': true, 
+        'menus-list-view': true, 
+        'no-scroll': editorVisible 
+    }">
         <p-header
             v-if="!showEmptyState"
             :title="$t('menu.menu')">
@@ -27,7 +32,7 @@
                     {{ $t('ui.name') }}
                 </collection-cell>
 
-                <collection-cell min-width="180px">
+                <collection-cell>
                     {{ $t('menu.assignedMenu') }}
                 </collection-cell>
 
@@ -53,7 +58,7 @@
             <collection-row
                 v-for="(item, index) in items"
                 slot="content"
-                :key="index">
+                :key="'menu-item-in-menus-list-' + index">
                 <collection-cell>
                     <checkbox
                         :value="index"
@@ -71,14 +76,17 @@
 
                 <collection-cell
                     type="assignment">
-                    <dropdown
-                        :id="'menu-select-' + index"
-                        :items="availableMenus"
-                        :selected="item.position"
-                        :noBorder="true"
-                        :disabledValues="usedMenus"
-                        @change.native="changeMenu($event, index)">
-                    </dropdown>
+                    
+                    <a 
+                        href="#"
+                        @click.prevent="openMenuPositionPopup(item, index)"
+                        class="menu-assignment-link">
+                        {{ menuPositions(item.position) }} 
+                        <span
+                            class="menu-assignment-link-icon"
+                            name="sidebar-arrow">
+                        </span>                      
+                    </a>
                 </collection-cell>
 
                 <collection-cell
@@ -164,13 +172,21 @@
         <transition>
             <menu-item-editor v-if="editorVisible" />
         </transition>
+
+        <menu-position-popup 
+            v-if="menuPositionPopupVisible"
+            :editedItem="selectedMenuItemToEditPosition"
+            :editedItemIndex="selectedMenuItemToEditIndex"
+            :menus="items" />
     </section>
 </template>
 
 <script>
 import Draggable from 'vuedraggable';
+import Vue from 'vue';
 import MenuItem from './MenuItem.vue';
 import MenuItemEditor from './MenuItemEditor.vue';
+import MenuPositionPopup from './MenuPositionPopup.vue';
 import CollectionCheckboxes from './mixins/CollectionCheckboxes.js';
 
 export default {
@@ -181,7 +197,8 @@ export default {
     components: {
         'draggable': Draggable,
         'menu-item': MenuItem,
-        'menu-item-editor': MenuItemEditor
+        'menu-item-editor': MenuItemEditor,
+        'menu-position-popup': MenuPositionPopup
     },
     data () {
         return {
@@ -192,7 +209,10 @@ export default {
             openedItems: [],
             openedEditForms: [],
             selectedItem: null,
-            selectedItemMenuID: null
+            selectedItemMenuID: null,
+            selectedMenuItemToEditPosition: false,
+            selectedMenuItemToEditIndex: false,
+            menuPositionPopupVisible: false
         };
     },
     computed: {
@@ -201,14 +221,6 @@ export default {
         },
         showEmptyState: function() {
             return !this.items.length;
-        },
-        availableMenus () {
-            let menus = JSON.parse(JSON.stringify(this.$store.state.currentSite.themeSettings.menus));
-            menus[''] = this.$t('menu.unassigned');
-            return menus;
-        },
-        usedMenus () {
-            return this.items.map(item => item.position);
         }
     },
     mounted () {
@@ -236,6 +248,14 @@ export default {
 
         this.$bus.$on('menus-manager-move-item', config => {
             this.moveMenuItem(config);
+        });
+
+        this.$bus.$on('hide-menu-position-popup', () => {
+            this.menuPositionPopupVisible = false;
+        });
+
+        this.$bus.$on('menus-manager-save-menu-positions', config => {
+            this.changeMenu(config.index, config.position, config.maxLevels);
         });
     },
     methods: {
@@ -294,12 +314,11 @@ export default {
 
             return true;
         },
-        changeMenu (event, menuIndex) {
-            let newValue = event.target.value;
-
+        changeMenu (itemIndex, itemPosition, itemMaxLevels) {
             this.$store.commit('setMenuPosition', {
-                index: menuIndex,
-                position: newValue
+                index: itemIndex,
+                position: itemPosition,
+                maxLevels: itemMaxLevels
             });
 
             this.saveNewMenuStructure();
@@ -422,6 +441,41 @@ export default {
 
             this.saveNewMenuStructure();
             this.unselectMenuItem();
+        },
+        menuPositions (positions) {
+            let menus = JSON.parse(JSON.stringify(this.$store.state.currentSite.themeSettings.menus));
+            let output = [];
+            positions = positions.split(';');
+
+            if (positions[0] === '') {
+                return this.$t('menu.unassigned');
+            }
+
+            for (let i = 0; i < positions.length; i++) {
+                let position = positions[i];
+
+                if (menus[position]) {
+                    if (typeof menus[position] === 'string') {
+                        output.push(menus[position]);
+                    } else if (menus[position].name) {
+                        output.push(menus[position].name);
+                    }
+                }
+            }
+
+            if (!output.length) {
+                return this.$t('menu.unassigned');
+            }
+
+            return output.join(', ');
+        },
+        openMenuPositionPopup (item, index) {
+            this.selectedMenuItemToEditPosition = item;
+            this.selectedMenuItemToEditIndex = index;
+
+            Vue.nextTick(() => {
+                this.menuPositionPopupVisible = true;
+            });
         }
     },
     beforeDestroy () {
@@ -430,6 +484,8 @@ export default {
         this.$bus.$off('save-new-menu-structure');
         this.$bus.$off('menus-manager-selected-item');
         this.$bus.$off('menus-manager-move-item');
+        this.$bus.$off('hide-menu-position-popup');
+        this.$bus.$off('menus-manager-save-menu-positions');
     }
 }
 </script>
@@ -445,10 +501,6 @@ export default {
         overflow: hidden;
     }
 
-    select {
-        width: 15rem;
-    }
-
     .item-content {
         border-bottom: 1px solid var(--border-light-color);
         grid-column-start: 1;
@@ -460,8 +512,33 @@ export default {
     }
 
     .col.assignment {
+        display: flex;
         padding-top: 0;
         padding-bottom: 0;
+    }
+
+    &-assignment-link {
+        padding-right: 4rem;
+        position: relative;
+        width: 100%;
+
+        &-icon {
+            border-color: var(--button-gray-bg) transparent transparent;
+            border-style: solid;
+            border-width: 5px;
+            opacity: 1;
+            cursor: pointer;
+            height: 5px;
+            left: auto;
+            line-height: 1.1;
+            padding: 0;
+            position: absolute;
+            right: 0;
+            width: 5px;
+            text-align: center;
+            transition: var(--transition);
+            top: calc(50% - 2px);
+        }
     }
 
     &-content {

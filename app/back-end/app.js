@@ -5,7 +5,6 @@
 // Necessary packages
 const fs = require('fs-extra');
 const path = require('path');
-const fileExists = require('file-exists');
 const sqlite = require('better-sqlite3');
 const compare = require('node-version-compare');
 const normalizePath = require('normalize-path');
@@ -209,7 +208,7 @@ class App {
         const themeConfigPath = path.join(siteDir, 'input', 'config', 'theme.config.json');
         const dbPath = path.join(siteDir, 'input', 'db.sqlite');
 
-        if(!Utils.fileExists(dbPath)) {
+        if (!Utils.fileExists(dbPath)) {
             return { status: false };
         }
 
@@ -263,7 +262,7 @@ class App {
         // check if the config file exists
         let configFilePath = path.join(dirPath, 'input', 'config', 'site.config.json');
 
-        if (!fileExists(configFilePath)) {
+        if (!Utils.fileExists(configFilePath)) {
             return;
         }
 
@@ -458,6 +457,31 @@ class App {
                 width: width,
                 height: height
             };
+        } else {
+            let screens = screen.getAllDisplays();
+            let isInsideScreenBounds = false;
+
+            for (let monitor of screens) {
+                if (
+                    this.windowBounds.x >= monitor.bounds.x && 
+                    this.windowBounds.y >= monitor.bounds.y && 
+                    this.windowBounds.x + this.windowBounds.width <= monitor.bounds.x + monitor.bounds.width && 
+                    this.windowBounds.y + this.windowBounds.height <= monitor.bounds.y + monitor.bounds.height
+                ) {
+                    isInsideScreenBounds = true;
+                    break
+                }
+            }
+
+            if (!isInsideScreenBounds) {
+                let width = screens[0].workAreaSize.width;
+                let height = screens[0].workAreaSize.height;
+                
+                this.windowBounds = {
+                    width: width,
+                    height: height
+                };
+            }
         }
 
         // Try to get application config
@@ -582,27 +606,26 @@ class App {
             }
         });
 
-        // Prevent from creating new windows in the Electron context
-        this.mainWindow.webContents.on('new-window', function(event, urlToOpen) {
-            event.preventDefault();
-
-            if (typeof urlToOpen !== 'string') {
-                return false;
+        this.mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+            if (typeof url !== 'string') {
+                return { action: 'deny' };
             }
 
-            let url;
+            let urlToOpen;
             let allowedProtocols = ['http:', 'https:', 'file:', 'dat:', 'ipfs:', 'dweb:'];
 
             try {
-                url = new URL(urlToOpen);
+                urlToOpen = new URL(url);
             } catch (e) {
-                return false;
+                return { action: 'deny' };
             }
 
-            if (allowedProtocols.indexOf(url.protocol) > -1) {
-                url = url.href.replace(/\s/gmi, '');
+            if (allowedProtocols.indexOf(urlToOpen.protocol) > -1) {
+                urlToOpen = urlToOpen.href.replace(/\s/gmi, '');
                 shell.openExternal(url);
             }
+            
+            return { action: 'deny' };
         });
 
         this.mainWindow.webContents.on('app-command', (e, cmd) => {
@@ -634,10 +657,16 @@ class App {
                 sites: self.sites,
                 themes: self.themes,
                 themesPath: self.themesPath,
-                dirs: self.dirPaths
+                dirs: self.dirPaths,
+                vendorPath: normalizePath(path.join(__dirname, '..', 'default-files', 'vendor').replace('app.asar', 'app.asar.unpacked'))
             };
 
             self.mainWindow.webContents.send('app-data-loaded', appData);
+
+            // Open Dev Tools
+            if (self.appConfig.openDevToolsInMain) {
+                self.mainWindow.webContents.openDevTools();
+            }
         });
 
         if (process.platform === 'linux') {
@@ -656,11 +685,6 @@ class App {
             event.preventDefault();
             contextMenuBuilder.showPopupMenu(params);
         });
-
-        // Open Dev Tools
-        if (this.appConfig.openDevToolsInMain) {
-            this.mainWindow.webContents.openDevTools();
-        }
     }
 
     // Add events to the window

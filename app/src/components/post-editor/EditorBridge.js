@@ -35,6 +35,11 @@ class EditorBridge {
             editorConfig.extended_valid_elements = editorConfig.extended_valid_elements + ',' + additionalValidElements;
         }
 
+        if (window.app.wysiwygCustomElements() !== '') {
+            let customElements = window.app.wysiwygCustomElements();
+            editorConfig.custom_elements = customElements;
+        }
+
         // Remove style selector when there is no custom styles from the theme
         if(customFormats.length === 0) {
             editorConfig.toolbar2 = editorConfig.toolbar2.replace('styleselect', '');
@@ -166,7 +171,7 @@ class EditorBridge {
             });
 
             iframe.contentWindow.window.document.body.addEventListener("click", (e) => {
-                let clickedElement = e.path[0];
+                let clickedElement = e.path ? e.path[0] : e.srcElement;
                 let showPopup = false;
 
                 if(localStorage.getItem('publii-writers-panel') === null) {
@@ -189,8 +194,11 @@ class EditorBridge {
 
                 if(clickedElement.tagName === 'FIGURE') {
                     showPopup = true;
-                } else if(e.path[1] && e.path[1].tagName === 'FIGURE') {
+                } else if(e.path && e.path[1] && e.path[1].tagName === 'FIGURE') {
                     clickedElement = e.path[1];
+                    showPopup = true;
+                } else if(e.srcElement && e.srcElement.parentNode && e.srcElement.parentNode === 'FIGURE') {
+                    clickedElement = e.srcElement.parentNode;
                     showPopup = true;
                 }
 
@@ -475,6 +483,7 @@ class EditorBridge {
         });
 
         this.tinymceEditor.ui.registry.addButton('readmore', {
+            icon: 'readmore',
             text: window.app.translate('editor.readMore'),
             onAction: () => {
                 this.tinymceEditor.insertContent('<hr id="read-more" data-translation="' + window.app.translate('editor.readMore') + '">' + "\n");
@@ -504,7 +513,7 @@ class EditorBridge {
     }
 
     checkInlineTrigger (target) {
-        let excludedTags = ['FIGURE', 'FIGCAPTION', 'IMG'];
+        let excludedTags = ['FIGURE', 'FIGCAPTION', 'IMG', 'PRE'];
 
         if (excludedTags.indexOf(target.tagName) > -1) {
             return false;
@@ -516,6 +525,10 @@ class EditorBridge {
 
         for ( ; target && target !== document; target = target.parentNode) {
             if (target.matches && target.matches('.post__toc')) {
+                return false;
+            }
+
+            if (target.matches && target.matches('pre')) {
                 return false;
             }
         }
